@@ -1,4 +1,13 @@
-﻿//colour has been changed to int3 (NOW THEY"RE FLOAT3)
+﻿inline unsigned int iterations2colour(unsigned int iter, unsigned int max_iter, unsigned int flags)
+{
+	// bound iterations to number of available colours
+	iter = (iter * 256 / max_iter) & (256 - 1);
+
+	// convert iterations to colour scale based on flags (7 basic colour scales possible)
+	return (((flags & 4) << 14) | ((flags & 2) << 7) | (flags & 1)) * iter;
+}
+
+//colour has been changed to int3 (NOW THEY"RE FLOAT3)
 //point and vector are float3.
 
 typedef struct Ray
@@ -204,12 +213,14 @@ void OutputInfo(const Scene* scene)
 	Cylinder* cylinderContainer;*/
 
 //TODO: add an appropriate set of parameters to transfer the data
-__kernel void func(__global struct Scene* scenein, int width, int height, int aaLevel,
+	//MAY BE ABLE TO REMOVE WWIDTH AND HHEIGHT (we have get_global_size fo dat)
+__kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int aaLevel,
 	__global Material* materialContainerIn,
 	__global Light* lightContainerIn,
 	__global Sphere* sphereContainerIn,
 	__global Plane* planeContainerIn,
-	__global Cylinder* cylinderContainerIn) {
+	__global Cylinder* cylinderContainerIn,
+	__global int* out) {
 
 	Scene scene = *scenein;
 
@@ -219,9 +230,42 @@ __kernel void func(__global struct Scene* scenein, int width, int height, int aa
 	scene.planeContainer = planeContainerIn;
 	scene.cylinderContainer = cylinderContainerIn;
 
-	printf("hello world\n");
-	printf("width: %d, height: %d\n", width, height);
+
+	unsigned int width = get_global_size(0);
+	unsigned int height = get_global_size(1);
+
+	unsigned int iy = get_global_id(0);
+	unsigned int ix = get_global_id(1);
+
+	//printf("%d / %d\n", iy, ix);
+
+	//out[iy * width + ix] = ((ix % 256) | (0) | (iy % 256)) * 2;\
+
+	//float3 rgb = { 255, 0, 0 };
+	//out[iy * width + ix] = &rgb;
+	out[iy * width + ix] = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
+
+	//00 00 00 00
+	//out[iy * width + ix] = (((flags & 4) << 14) | ((flags & 2) << 7) | (flags & 1));
+	/*out[iy * width + ix] =
+		((unsigned char) (255 * (min(1.0f - exp((ix % 256) * scene.exposure), 1.0f))) << 16) +
+		((unsigned char) (255 * (min(1.0f - exp(0 * scene.exposure), 1.0f))) << 8) +
+		((unsigned char) (255 * (min(1.0f - exp((iy % 256) * scene.exposure), 1.0f))) << 0);*/
+	
+		//((unsigned char) (255 * (std::min(1.0f - expf(255 * scene.exposure), 1.0f))) << 16) +
+		//((unsigned char) (255 * (std::min(1.0f - expf(0 * scene.exposure), 1.0f))) << 8) +
+		//((unsigned char) (255 * (std::min(1.0f - expf(255 * scene.exposure), 1.0f))) << 0);
+	//out[iy * width + ix] = ((ix % 256) | (0) | (iy % 256)) * 2;
+	//out[iy * width + ix] = (255) | (0) | (0) * 10;
+	//out[iy * width + ix] = iterations2colour(100 / (21414 * 2112312), 1, 7);
+	//RGB(xCoordinate % 256, 0, yCoordinate % 256)
+
+
+	//printf("hello world\n");
+	//printf("width: %d, height: %d\n", width, height);
 	//printf("cameraFieldOfView: %d\n", scene.cameraFieldOfView);
 
-	OutputInfo(&scene);
+	//OutputInfo(&scene);
+
+
 }

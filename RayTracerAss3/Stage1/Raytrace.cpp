@@ -313,10 +313,12 @@ int main(int argc, char* argv[])
 			width = atoi(argv[++i]);
 			height = atoi(argv[++i]);
 		}
-		/*else if (strcmp(argv[i], "-samples") == 0) //stage one ignores samples flag.
+		else if (strcmp(argv[i], "-samples") == 0) //stage one ignores samples flag. was getting an error when this was commented out
 		{
-			samples = atoi(argv[++i]);
-		}*/
+			//samples = atoi(argv[++i]);
+			i++;
+			samples = 1;
+		}
 		else if (strcmp(argv[i], "-input") == 0)
 		{
 			inputFilename = argv[++i];
@@ -351,7 +353,7 @@ int main(int argc, char* argv[])
 	}
 
 	// display info about the current scene
-	OutputInfo(&scene);
+	//OutputInfo(&scene);
 
 	Timer timer;		// create timer
 
@@ -363,8 +365,8 @@ int main(int argc, char* argv[])
 	cl_command_queue queue;
 	cl_program program;
 	cl_kernel kernel;
-	size_t workOffset[] = { 0 };
-	size_t workSize[] = { 1 };
+	size_t workOffset[] = { 0, 0 };
+	size_t workSize[] = { width, height };
 
 	cl_mem clBuffer1;
 	cl_mem clBuffer2;
@@ -372,6 +374,11 @@ int main(int argc, char* argv[])
 	cl_mem clBuffer4;
 	cl_mem clBuffer5;
 	cl_mem clBuffer6;
+	cl_mem clBuffer7;
+
+	//unsigned int outBuffer[width * height];
+	//unsigned int outBuffer[4];
+	//unsigned int outBuffer[MAX_WIDTH * MAX_HEIGHT];
 
 	err = clGetPlatformIDs(1, &platform, NULL);
 	if (err != CL_SUCCESS)
@@ -457,6 +464,11 @@ int main(int argc, char* argv[])
 		printf("Couldn't create a bufferIn6 object -> %d\n", err);
 		exit(1);
 	}
+	clBuffer7 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * width * height, buffer, &err);
+	if (err != CL_SUCCESS) {
+		printf("Couldn't create a bufferIn7 object -> %d\n", err);
+		exit(1);
+	}
 
 
 	err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clBuffer1);
@@ -480,7 +492,6 @@ int main(int argc, char* argv[])
 		printf("Couldn't set the kernel(3) argument = %d\n", err);
 		exit(1);
 	}
-
 	
 	//add additional kernal args. 
 	err = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clBuffer2);
@@ -512,14 +523,15 @@ int main(int argc, char* argv[])
 		printf("Couldn't set the kernel(8) argument = %d\n", err);
 		exit(1);
 	}
-	
 
-	err = clEnqueueNDRangeKernel(queue, kernel, 1, workOffset, workSize, NULL, 0, NULL, NULL);
+	err = clSetKernelArg(kernel, 9, sizeof(cl_mem), &clBuffer7);
 	if (err != CL_SUCCESS) {
-		printf("Couldn't enqueue the kernel execution command = %d\n", err);
+		printf("Couldn't set the kernel(9) argument\n");
 		exit(1);
 	}
-	printf("\nreached end of opencl\n\n");
+	
+
+	
 
 
 	// first time and total time taken to render all runs (used to calculate average)
@@ -531,7 +543,19 @@ int main(int argc, char* argv[])
 		if (i > 0) timer.start();
 
 		// OpenCL execution code replaces this call to render()
-		samplesRendered = render(&scene, width, height, samples, testMode);								// raytrace scene
+		err = clEnqueueNDRangeKernel(queue, kernel, 2, workOffset, workSize, NULL, 0, NULL, NULL);
+		if (err != CL_SUCCESS) {
+			printf("Couldn't enqueue the kernel execution command = %d\n", err);
+			exit(1);
+		}
+
+		err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * width * height, buffer, 0, NULL, NULL);
+		if (err != CL_SUCCESS) {
+			printf("Couldn't enqueue the read buffer command\n");
+			exit(1);
+		}
+		//printf("\nreached end of opencl\n\n");
+		//samplesRendered = render(&scene, width, height, samples, testMode);								// raytrace scene
 
 		timer.end();																					// record end time
 		if (i > 0)
