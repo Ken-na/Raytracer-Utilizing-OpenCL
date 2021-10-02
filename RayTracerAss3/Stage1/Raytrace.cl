@@ -265,7 +265,10 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 	//printf("width: %d, height: %d\n", width, height);
 	//printf("cameraFieldOfView: %d\n", scene.cameraFieldOfView);
 
-	//OutputInfo(&scene);
+	/*if (iy == 0 && ix == 0) {
+		OutputInfo(&scene);
+
+	}*/
 
 
 }

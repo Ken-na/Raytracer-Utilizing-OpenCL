@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
 	bool testMode = false;
 
 	// default input / output filenames
-	const char* inputFilename = "Scenes/cornell.txt";
+	const char* inputFilename = "Scenes/donuts.txt"; //cornell working
 
 	char outputFilenameBuffer[1000];
 	char* outputFilename = outputFilenameBuffer;
@@ -448,22 +448,42 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-	clBuffer4 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Sphere) * scene.numSpheres, scene.sphereContainer, &err);
-	if (err != CL_SUCCESS) {
-		printf("Couldn't create a bufferIn4 object -> %d\n", err);
-		exit(1);
+	if (scene.numSpheres > 0) {
+		clBuffer4 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Sphere) * scene.numSpheres, scene.sphereContainer, &err);
+		if (err != CL_SUCCESS) {
+			printf("Couldn't create a bufferIn4 object -> %d\n", err);
+			exit(1);
+		}
+	}
+	else {
+		int dummyInt = -1;
+		clBuffer4 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &dummyInt, &err);
+	}
+	
+	if (scene.numPlanes > 0) {
+		clBuffer5 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Plane) * scene.numPlanes, scene.planeContainer, &err);
+		if (err != CL_SUCCESS) {
+			printf("Couldn't create a bufferIn5 object -> %d\n", err);
+			exit(1);
+		}
+	}
+	else {
+		int dummyInt2 = -1;
+		clBuffer5 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &dummyInt2, &err);
 	}
 
-	clBuffer5 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Plane) * scene.numPlanes, scene.planeContainer, &err);
-	if (err != CL_SUCCESS) {
-		printf("Couldn't create a bufferIn5 object -> %d\n", err);
-		exit(1);
+	if (scene.numCylinders > 0) {
+		clBuffer6 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Cylinder) * scene.numCylinders, scene.cylinderContainer, &err);
+		if (err != CL_SUCCESS) {
+			printf("Couldn't create a bufferIn6 object -> %d\n", err);
+			exit(1);
+		}
 	}
-	clBuffer6 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Cylinder) * scene.numCylinders, scene.cylinderContainer, &err);
-	if (err != CL_SUCCESS) {
-		printf("Couldn't create a bufferIn6 object -> %d\n", err);
-		exit(1);
+	else {
+		int dummyInt3 = -1;
+		clBuffer6 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &dummyInt3, &err);
 	}
+
 	clBuffer7 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int) * width * height, buffer, &err);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't create a bufferIn7 object -> %d\n", err);
