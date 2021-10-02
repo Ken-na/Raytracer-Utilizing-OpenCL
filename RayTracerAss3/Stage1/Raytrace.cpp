@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
 	bool testMode = false;
 
 	// default input / output filenames
-	const char* inputFilename = "Scenes/donuts.txt"; //cornell working
+	const char* inputFilename = "Scenes/5000spheres.txt"; 
 
 	char outputFilenameBuffer[1000];
 	char* outputFilename = outputFilenameBuffer;
@@ -353,7 +353,7 @@ int main(int argc, char* argv[])
 	}
 
 	// display info about the current scene
-	//OutputInfo(&scene);
+	OutputInfo(&scene);
 
 	Timer timer;		// create timer
 
@@ -469,6 +469,7 @@ int main(int argc, char* argv[])
 	}
 	else {
 		int dummyInt2 = -1;
+		//clBuffer5 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(scene.planeContainer), scene.planeContainer, &err);
 		clBuffer5 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &dummyInt2, &err);
 	}
 
@@ -481,6 +482,7 @@ int main(int argc, char* argv[])
 	}
 	else {
 		int dummyInt3 = -1;
+		//clBuffer6 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(scene.cylinderContainer), scene.cylinderContainer, &err);
 		clBuffer6 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &dummyInt3, &err);
 	}
 
@@ -571,7 +573,7 @@ int main(int argc, char* argv[])
 
 		err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * width * height, buffer, 0, NULL, NULL);
 		if (err != CL_SUCCESS) {
-			printf("Couldn't enqueue the read buffer command\n");
+			printf("Couldn't enqueue the read buffer command = %d\n", err);
 			exit(1);
 		}
 		//printf("\nreached end of opencl\n\n");
