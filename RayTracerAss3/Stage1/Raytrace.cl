@@ -234,8 +234,8 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 	unsigned int width = get_global_size(0);
 	unsigned int height = get_global_size(1);
 
-	unsigned int iy = get_global_id(0);
-	unsigned int ix = get_global_id(1);
+	unsigned int ix = get_global_id(0);
+	unsigned int iy = get_global_id(1);
 
 	//printf("%d / %d\n", iy, ix);
 
@@ -243,6 +243,7 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 
 	//float3 rgb = { 255, 0, 0 };
 	//out[iy * width + ix] = &rgb;
+	
 	out[iy * width + ix] = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
 
 	//00 00 00 00
