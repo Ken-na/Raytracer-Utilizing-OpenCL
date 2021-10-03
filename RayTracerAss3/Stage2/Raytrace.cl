@@ -406,15 +406,22 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 	//{
 	//	for (int x = -width / 2; x < width / 2; ++x)
 	//	{
+
+	int ix2 = ix - (width / 2);
+	int iy2 = iy - (height / 2);
+
+	//int ix2 = (-width / 2) + ix;
+	//int iy2 = (-height / 2) + ix;
+
 	float3 output = { 0.0f, 0.0f, 0.0f };
 
 		// calculate multiple samples for each pixel
 		const float sampleStep = 1.0f / aaLevel, sampleRatio = 1.0f / (aaLevel * aaLevel);
 
 		// loop through all sub-locations within the pixel
-		for (float fragmentx = (float)ix; fragmentx < ix + 1.0f; fragmentx += sampleStep)
+		for (float fragmentx = (float)ix2; fragmentx < ix2 + 1.0f; fragmentx += sampleStep)
 		{
-			for (float fragmenty = (float)iy; fragmenty < iy + 1.0f; fragmenty += sampleStep)
+			for (float fragmenty = (float)iy2; fragmenty < iy2 + 1.0f; fragmenty += sampleStep)
 			{
 				// direction of default forward facing ray
 				float3 dir = { fragmentx * dirStepSize, fragmenty * dirStepSize, 1.0f };
