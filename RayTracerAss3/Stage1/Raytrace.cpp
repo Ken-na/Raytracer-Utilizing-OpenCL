@@ -411,7 +411,7 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-	err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+	err = clBuildProgram(program, 0, NULL, "-cl-std=CL1.2", NULL, NULL);
 	if (err != CL_SUCCESS) {
 		char* program_log;
 		size_t log_size;
