@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
 	bool testMode = false;
 
 	// default input / output filenames
-	const char* inputFilename = "Scenes/5000spheres.txt"; 
+	const char* inputFilename = "Scenes/cornell.txt"; 
 
 	char outputFilenameBuffer[1000];
 	char* outputFilename = outputFilenameBuffer;
@@ -405,7 +405,7 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-	program = clLoadSource(context, "Stage1/Raytrace.cl", &err);
+	program = clLoadSource(context, "Stage2/Raytrace.cl", &err);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't load/create the program\n");
 		exit(1);

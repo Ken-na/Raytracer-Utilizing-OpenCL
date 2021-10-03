@@ -1,11 +1,4 @@
-﻿inline unsigned int iterations2colour(unsigned int iter, unsigned int max_iter, unsigned int flags)
-{
-	// bound iterations to number of available colours
-	iter = (iter * 256 / max_iter) & (256 - 1);
-
-	// convert iterations to colour scale based on flags (7 basic colour scales possible)
-	return (((flags & 4) << 14) | ((flags & 2) << 7) | (flags & 1)) * iter;
-}
+﻿
 
 //colour has been changed to int3 (NOW THEY"RE FLOAT3)
 //point and vector are float3.
@@ -211,6 +204,164 @@ void OutputInfo(const Scene* scene)
 	Sphere* sphereContainer;
 	Plane* planeContainer;
 	Cylinder* cylinderContainer;*/
+	// updates intersection structure if collision occurs
+/*
+bool objectIntersection(const Scene* scene, const Ray* viewRay, Intersection* intersect)
+{
+	// set default distance to be a long long way away
+	float t = MAX_RAY_DISTANCE;
+
+	// no intersection found by default
+	intersect->objectType = Intersection::PrimitiveType::NONE;
+
+	// search for sphere collisions, storing closest one found
+	for (unsigned int i = 0; i < scene->numSpheres; ++i)
+	{
+		if (isSphereIntersected(&scene->sphereContainer[i], viewRay, &t))
+		{
+			intersect->objectType = Intersection::PrimitiveType::SPHERE;
+			intersect->sphere = &scene->sphereContainer[i];
+		}
+	}
+/*
+	// search for plane collisions, storing closest one found
+	for (unsigned int i = 0; i < scene->numPlanes; ++i)
+	{
+		if (isPlaneIntersected(&scene->planeContainer[i], viewRay, &t))
+		{
+			intersect->objectType = Intersection::PrimitiveType::PLANE;
+			intersect->plane = &scene->planeContainer[i];
+		}
+	}
+
+	// search for cylinder collisions, storing closest one found (and the normal at that point)
+	Vector normal;
+	for (unsigned int i = 0; i < scene->numCylinders; ++i)
+	{
+		if (isCylinderIntersected(&scene->cylinderContainer[i], viewRay, &t, &normal))
+		{
+			intersect->objectType = Intersection::PrimitiveType::CYLINDER;
+			intersect->normal = normal;
+			intersect->cylinder = &scene->cylinderContainer[i];
+		}
+	}
+
+	// nothing detected, return false
+	if (intersect->objectType == Intersection::PrimitiveType::NONE)
+	{
+		return false;
+	}
+	
+	// calculate the point of the intersection
+	intersect->pos = viewRay->start + viewRay->dir * t;
+
+	return true;
+}*/
+bool isSphereIntersected(const Sphere* s, const Ray* r, float* t)
+{
+	float EPSILON = 0.01f;
+	// Intersection of a ray and a sphere, check the articles for the rationale
+	float3 dist = s->pos - r->start;
+	//float B = r->dir * dist;
+	float B = dot(r->dir, dist);
+	float D = B * B - dot(dist, dist) + s->size * s->size;
+	//float D = B * B - dist * dist + s->size * s->size;
+
+	// if D < 0, no intersection, so don't try and calculate the point of intersection
+	if (D < 0.0f) return false;
+
+	// calculate both intersection times(/distances)
+	float t0 = B - sqrt(D);
+	float t1 = B + sqrt(D);
+
+	// check to see if either of the two sphere collision points are closer than time parameter
+	if ((t0 > EPSILON) && (t0 < *t))
+	{
+		*t = t0;
+		return true;
+	}
+	else if ((t1 > EPSILON) && (t1 < *t))
+	{
+		*t = t1;
+		return true;
+	}
+
+	return false;
+}
+// follow a single ray until it's final destination (or maximum number of steps reached)
+float3 traceRay(const Scene* scene, Ray viewRay)
+{
+	int maxRayCast = 10;
+
+	float3 black = { 0.0f, 0.0f, 0.0f }; 								// colour value to be output
+	float3 white = { 255.0f, 255.0f, 255.0f }; 								// colour value to be output
+	//float currentRefractiveIndex = DEFAULT_REFRACTIVE_INDEX;		// current refractive index
+	float coef = 1.0f;												// amount of ray left to transmit
+	//Intersection intersect;											// properties of current intersection
+
+																	// loop until reached maximum ray cast limit (unless loop is broken out of)
+	for (int level = 0; level < maxRayCast; ++level)
+	{
+		// check for intersections between the view ray and any of the objects in the scene
+		// exit the loop if no intersection found
+		//if (!objectIntersection(scene, &viewRay, &intersect)) break;
+
+		float t = FLT_MAX;
+
+		for (unsigned int i = 0; i < scene->numSpheres; ++i)
+		{
+			if (isSphereIntersected(&scene->sphereContainer[i], &viewRay, &t))
+			{
+				//intersect->objectType = Intersection::PrimitiveType::SPHERE;
+				//intersect->sphere = &scene->sphereContainer[i];
+				return white;
+			}
+		}
+
+		// calculate response to collision: ie. get normal at point of collision and material of object
+		//calculateIntersectionResponse(scene, &viewRay, &intersect);
+
+		// apply the diffuse and specular lighting 
+//if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
+
+		// if object has reflection or refraction component, adjust the view ray and coefficent of calculation and continue looping
+		//if (intersect.material->reflection)
+		//{
+		//	viewRay = calculateReflection(&viewRay, &intersect);
+		//	coef *= intersect.material->reflection;
+		//}
+		//else if (intersect.material->refraction)
+		//{
+		//	viewRay = calculateRefraction(&viewRay, &intersect, &currentRefractiveIndex);
+		//	coef *= intersect.material->refraction;
+		//}
+		//else
+		//{
+			// if no reflection or refraction, then finish looping (cast no more rays)
+		return black;
+		//}
+	}
+
+	// if the calculation coefficient is non-zero, read from the environment map
+	/*if (coef > 0.0f)
+	{
+		Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
+
+		output += coef * currentMaterial.diffuse;
+	}*/
+
+	return black;
+}
+
+/*float dot(float3 x){
+{
+	return x.x * x.x + x.y * x.y + x.z * x.z;
+}*/
+
+float3 normalise(float3 x)
+{
+	return x * rsqrt(dot(x, x));
+}
 
 //TODO: add an appropriate set of parameters to transfer the data
 	//MAY BE ABLE TO REMOVE WWIDTH AND HHEIGHT (we have get_global_size fo dat)
@@ -237,37 +388,78 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 	unsigned int ix = get_global_id(0);
 	unsigned int iy = get_global_id(1);
 
-	//printf("%d / %d\n", iy, ix);
-
-	//out[iy * width + ix] = ((ix % 256) | (0) | (iy % 256)) * 2;\
-
-	//float3 rgb = { 255, 0, 0 };
-	//out[iy * width + ix] = &rgb;
+	float PIOVER180 = 0.017453292519943295769236907684886f;
 	
-	out[iy * width + ix] = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
+	//out[iy * width + ix] = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
 
-	//00 00 00 00
-	//out[iy * width + ix] = (((flags & 4) << 14) | ((flags & 2) << 7) | (flags & 1));
-	/*out[iy * width + ix] =
-		((unsigned char) (255 * (min(1.0f - exp((ix % 256) * scene.exposure), 1.0f))) << 16) +
-		((unsigned char) (255 * (min(1.0f - exp(0 * scene.exposure), 1.0f))) << 8) +
-		((unsigned char) (255 * (min(1.0f - exp((iy % 256) * scene.exposure), 1.0f))) << 0);*/
-	
-		//((unsigned char) (255 * (std::min(1.0f - expf(255 * scene.exposure), 1.0f))) << 16) +
-		//((unsigned char) (255 * (std::min(1.0f - expf(0 * scene.exposure), 1.0f))) << 8) +
-		//((unsigned char) (255 * (std::min(1.0f - expf(255 * scene.exposure), 1.0f))) << 0);
-	//out[iy * width + ix] = ((ix % 256) | (0) | (iy % 256)) * 2;
-	//out[iy * width + ix] = (255) | (0) | (0) * 10;
-	//out[iy * width + ix] = iterations2colour(100 / (21414 * 2112312), 1, 7);
-	//RGB(xCoordinate % 256, 0, yCoordinate % 256)
+	// angle between each successive ray cast (per pixel, anti-aliasing uses a fraction of this)
+	const float dirStepSize = 1.0f / (0.5f * width / tan(PIOVER180 * 0.5f * scene.cameraFieldOfView));
 
+	// pointer to output buffer
+	//unsigned int* out = buffer;
 
-	//printf("hello world\n");
-	//printf("width: %d, height: %d\n", width, height);
-	//printf("cameraFieldOfView: %d\n", scene.cameraFieldOfView);
+	// count of samples rendered
+	unsigned int samplesRendered = 0;
+
+	// loop through all the pixels
+	//for (int y = -height / 2; y < height / 2; ++y)
+	//{
+	//	for (int x = -width / 2; x < width / 2; ++x)
+	//	{
+	float3 output = { 0.0f, 0.0f, 0.0f };
+
+		// calculate multiple samples for each pixel
+		const float sampleStep = 1.0f / aaLevel, sampleRatio = 1.0f / (aaLevel * aaLevel);
+
+		// loop through all sub-locations within the pixel
+		for (float fragmentx = (float)ix; fragmentx < ix + 1.0f; fragmentx += sampleStep)
+		{
+			for (float fragmenty = (float)iy; fragmenty < iy + 1.0f; fragmenty += sampleStep)
+			{
+				// direction of default forward facing ray
+				float3 dir = { fragmentx * dirStepSize, fragmenty * dirStepSize, 1.0f };
+
+				// rotated direction of ray
+				float3 rotatedDir = {
+					dir.x * cos(scene.cameraRotation) - dir.z * sin(scene.cameraRotation),
+					dir.y,
+					dir.x * sin(scene.cameraRotation) + dir.z * cos(scene.cameraRotation) };
+
+				// view ray starting from camera position and heading in rotated (normalised) direction
+				Ray viewRay = { scene.cameraPosition, normalise(rotatedDir) };
+
+				// follow ray and add proportional of the result to the final pixel colour
+				output += sampleRatio * traceRay(&scene, viewRay);
+
+				// count this sample
+				samplesRendered++;
+			}
+		}
+
+		out[iy * width + ix] = (((int)(output.x) << 16) | ((int)(output.y) << 8) | (int)(output.z));
+		//*out++ = (((int)(output.x) << 16) | ((int)(output.y) << 8) | (int)(output.z));
+		//*out++ = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
+		//if (!testMode)
+		//{
+			// store saturated final colour value in image buffer
+			//*out++ = (((output.x) << 16) | ((output.y) << 8) | (output.z % 256));
+			//*out++ = output.convertToPixel(scene->exposure);
+		//}
+		//else
+		//{
+		//	// store colour (calculated from x,y coordinates) in image buffer 
+		//	//*out++ = Colour((x + width / 2) % 256 / 255.0f, 0, (y + height / 2) % 256 / 255.0f).convertToPixel();
+		//	//*out++ = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
+		//}
+		//}
+	//}
+
+	//return samplesRendered;
 
 	if (iy == 0 && ix == 0) {
-		OutputInfo(&scene);
+		//OutputInfo(&scene);
+
+		printf("stanky leg\n");
 
 	}
 
