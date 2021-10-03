@@ -89,11 +89,11 @@ typedef struct Scene
 // output a bunch of info about the contents of the scene
 void OutputInfo(const Scene* scene)
 {
-	Plane* planes = scene->planeContainer;
-	Cylinder* cylinders = scene->cylinderContainer;
-	Sphere* spheres = scene->sphereContainer;
-	Light* lights = scene->lightContainer;
-	Material* materials = scene->materialContainer;
+	__global Plane* planes = scene->planeContainer;
+	__global Cylinder* cylinders = scene->cylinderContainer;
+	__global Sphere* spheres = scene->sphereContainer;
+	__global Light* lights = scene->lightContainer;
+	__global Material* materials = scene->materialContainer;
 
 	printf("\n---- GEEPEEYOU --------\n");
 	printf("sizeof(Point):    %d\n", sizeof(float3));
@@ -257,7 +257,7 @@ bool objectIntersection(const Scene* scene, const Ray* viewRay, Intersection* in
 
 	return true;
 }*/
-bool isSphereIntersected(const Sphere* s, const Ray* r, float* t)
+bool isSphereIntersected(__global Sphere* s, const Ray* r, float* t)
 {
 	float EPSILON = 0.01f;
 	// Intersection of a ray and a sphere, check the articles for the rationale
