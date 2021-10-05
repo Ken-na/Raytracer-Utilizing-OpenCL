@@ -1,7 +1,14 @@
 ﻿
-
+__constant float EPSILON = 0.01f;
+__constant int MAX_RAYS_CAST = 10;
+__constant float DEFAULT_REFRACTIVE_INDEX = 1.0f;
+__constant const float MAX_RAY_DISTANCE = FLT_MAX;
 //colour has been changed to int3 (NOW THEY"RE FLOAT3)
 //point and vector are float3.
+float3 normalise(float3 x)
+{
+	return x * rsqrt(dot(x, x));
+}
 
 typedef struct Ray
 {
@@ -60,6 +67,29 @@ typedef struct Cylinder
 	float size;					// radius of cylinder
 	unsigned int materialId;	// material id
 } Cylinder;
+
+enum PrimitiveType { NONE, SPHERE, PLANE, CYLINDER };
+
+typedef struct Intersection
+{
+
+	enum PrimitiveType objectType;	// type of object intersected with
+
+	float3 pos;											// point of intersection
+	float3 normal;										// normal at point of intersection
+	float viewProjection;								// view projection 
+	bool insideObject;									// whether or not inside an object
+
+	__global Material* material;									// material of object
+
+	// object collided with
+	union
+	{
+		__global Sphere* sphere;
+		__global Cylinder* cylinder;
+		__global Plane* plane;
+	};
+} Intersection;
 
 typedef struct Scene
 {
@@ -205,61 +235,11 @@ void OutputInfo(const Scene* scene)
 	Plane* planeContainer;
 	Cylinder* cylinderContainer;*/
 	// updates intersection structure if collision occurs
-/*
-bool objectIntersection(const Scene* scene, const Ray* viewRay, Intersection* intersect)
-{
-	// set default distance to be a long long way away
-	float t = MAX_RAY_DISTANCE;
 
-	// no intersection found by default
-	intersect->objectType = Intersection::PrimitiveType::NONE;
 
-	// search for sphere collisions, storing closest one found
-	for (unsigned int i = 0; i < scene->numSpheres; ++i)
-	{
-		if (isSphereIntersected(&scene->sphereContainer[i], viewRay, &t))
-		{
-			intersect->objectType = Intersection::PrimitiveType::SPHERE;
-			intersect->sphere = &scene->sphereContainer[i];
-		}
-	}
-/*
-	// search for plane collisions, storing closest one found
-	for (unsigned int i = 0; i < scene->numPlanes; ++i)
-	{
-		if (isPlaneIntersected(&scene->planeContainer[i], viewRay, &t))
-		{
-			intersect->objectType = Intersection::PrimitiveType::PLANE;
-			intersect->plane = &scene->planeContainer[i];
-		}
-	}
-
-	// search for cylinder collisions, storing closest one found (and the normal at that point)
-	Vector normal;
-	for (unsigned int i = 0; i < scene->numCylinders; ++i)
-	{
-		if (isCylinderIntersected(&scene->cylinderContainer[i], viewRay, &t, &normal))
-		{
-			intersect->objectType = Intersection::PrimitiveType::CYLINDER;
-			intersect->normal = normal;
-			intersect->cylinder = &scene->cylinderContainer[i];
-		}
-	}
-
-	// nothing detected, return false
-	if (intersect->objectType == Intersection::PrimitiveType::NONE)
-	{
-		return false;
-	}
-	
-	// calculate the point of the intersection
-	intersect->pos = viewRay->start + viewRay->dir * t;
-
-	return true;
-}*/
 bool isSphereIntersected(__global Sphere* s, const Ray* r, float* t)
 {
-	float EPSILON = 0.01f;
+	//float EPSILON = 0.01f;
 	// Intersection of a ray and a sphere, check the articles for the rationale
 	float3 dist = s->pos - r->start;
 	//float B = r->dir * dist;
@@ -288,69 +268,445 @@ bool isSphereIntersected(__global Sphere* s, const Ray* r, float* t)
 
 	return false;
 }
+bool isPlaneIntersected(__global Plane* p, const Ray* r, float* t)
+{
+	// angle between ray and surface normal
+	float angle = dot(r->dir, p->normal);
+	//float angle = r->dir * p->normal;
+
+	// no intersection if ray and plane are parallel
+	if (angle == 0.0f) return false;
+
+	// find point of intersection
+	float t0 = (dot((p->pos - r->start), p->normal)) / angle;
+	//float t0 = ((p->pos - r->start) * p->normal) / angle;
+
+	// check to see if plane collision point is closer than time parameter
+	if (t0 > EPSILON && t0 < *t)
+	{
+		*t = t0;
+		return true;
+	}
+
+	return false;
+}
+
+
+// test to see if collision between ray and a cylinder happens before time t (equivalent to distance)
+// updates closest collision time (/distance) and normal (at point of collions) if collision occurs
+// based on code from: https://www.shadertoy.com/view/4lcSRn
+// see: https://mrl.cs.nyu.edu/~dzorin/rend05/lecture2.pdf
+// see: https://math.stackexchange.com/questions/3248356/calculating-ray-cylinder-intersection-points
+// see: https://www.doc.ic.ac.uk/~dfg/graphics/graphics2010/GraphicsLecture11.pdf
+bool isCylinderIntersected(__global Cylinder* cy, const Ray* r, float* t, float3* normal)
+{
+	// vector between start and end of the cylinder (cylinder axis, i.e. ca)
+	float3 ca = cy->p2 - cy->p1;
+
+	// vector between ray origin and start of the cylinder
+	float3 oc = r->start - cy->p1;
+
+	// cache some dot-products 
+	float caca = dot(ca, ca);
+	//float caca = ca * ca;
+	float card = dot(ca, r->dir);
+	//float card = ca * r->dir;
+	float caoc = dot(ca, oc);
+	//float caoc = ca * oc;
+
+	// calculate values for coefficients of line-cylinder equation
+	float a = caca - card * card;
+	float b = caca * dot(oc, r->dir) - caoc * card;
+	//float b = caca * (oc * r->dir) - caoc * card;
+	float c = caca * dot(oc, oc) - caoc * caoc - cy->size * cy->size * caca;
+	//float c = caca * (oc * oc) - caoc * caoc - cy->size * cy->size * caca;
+
+	// first half of distance calculation (distance squared)
+	float h = b * b - a * c;
+
+	// if ray doesn't intersect with infinite cylinder, exit
+	if (h < 0.0f) return false;
+
+	// second half of distance calculation (distance)
+	h = sqrt(h);
+
+	// calculate point of intersection (on infinite cylinder)
+	float tBody = (-b - h) / a;
+
+	// calculate distance along cylinder
+	float y = caoc + tBody * card;
+
+	// check intersection point is on the length of the cylinder
+	if (y > 0 && y < caca)
+	{
+		// check to see if the collision point on the cylinder body is closer than the time parameter
+		if (tBody > EPSILON && tBody < *t)
+		{
+			*t = tBody;
+			*normal = (oc + (r->dir * tBody - ca * y / caca)) / cy->size;
+			return true;
+		}
+	}
+
+	// calculate point of intersection on plane containing cap
+	float tCaps = (((y < 0.0f) ? 0.0f : caca) - caoc) / card;
+
+	float valToAbs = b + a * tCaps;
+	// check intersection point is within the radius of the cap
+	if (fabs(b + a * tCaps) < h)
+	//if (abs(b + a * tCaps) < h)
+	{
+		// check to see if the collision point on the cylinder cap is closer than the time parameter
+		if (tCaps > EPSILON && tCaps < *t)
+		{
+			*t = tCaps;
+			*normal = ca * rsqrt(caca) * sign(y);
+			//*normal = ca * invsqrtf(caca) * sign(y);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool objectIntersection(const Scene* scene, const Ray* viewRay, Intersection* intersect)
+{
+	// set default distance to be a long long way away
+	//float t = MAX_RAY_DISTANCE;
+	//float t = FLT_MAX;
+	float t = MAX_RAY_DISTANCE;
+
+	// no intersection found by default
+	intersect->objectType = NONE;
+	//intersect->objectType = Intersection::PrimitiveType::NONE;
+
+	// search for sphere collisions, storing closest one found
+	for (unsigned int i = 0; i < scene->numSpheres; ++i)
+	{
+		if (isSphereIntersected(&scene->sphereContainer[i], viewRay, &t))
+		{
+			intersect->objectType = SPHERE;
+			//intersect->objectType = Intersection::PrimitiveType::SPHERE;
+			intersect->sphere = &scene->sphereContainer[i];
+			//return true;
+		}
+	}
+	
+	// search for plane collisions, storing closest one found
+	for (unsigned int i = 0; i < scene->numPlanes; ++i)
+	{
+		if (isPlaneIntersected(&scene->planeContainer[i], viewRay, &t))
+		{
+			intersect->objectType = PLANE;
+			//intersect->objectType = Intersection::PrimitiveType::PLANE;
+			intersect->plane = &scene->planeContainer[i];
+			//return true;
+		}
+	}
+	
+	// search for cylinder collisions, storing closest one found (and the normal at that point)
+	float3 normal;
+	for (unsigned int i = 0; i < scene->numCylinders; ++i)
+	{
+		if (isCylinderIntersected(&scene->cylinderContainer[i], viewRay, &t, &normal))
+		{
+			intersect->objectType = CYLINDER;
+			//intersect->objectType = Intersection::PrimitiveType::CYLINDER;
+			intersect->normal = normal;
+			intersect->cylinder = &scene->cylinderContainer[i];
+			
+			//return true;
+		}
+	}
+	
+	// nothing detected, return false
+	if (intersect->objectType == NONE)
+	//if (intersect->objectType == Intersection::PrimitiveType::NONE)
+	{
+		return false;
+	}
+
+	// calculate the point of the intersection
+	intersect->pos = viewRay->start + viewRay->dir * t;
+
+	return true;
+	//return false;
+}
+
+
+// calculate collision normal, viewProjection, object's material, and test to see if inside collision object
+void calculateIntersectionResponse(const Scene* scene, const Ray* viewRay, Intersection* intersect)
+{
+	switch (intersect->objectType)
+	{
+	case SPHERE:
+		intersect->normal = normalise(intersect->pos - intersect->sphere->pos);
+		intersect->material = &scene->materialContainer[intersect->sphere->materialId];
+		break;
+	case PLANE:
+		intersect->normal = intersect->plane->normal;
+		intersect->material = &scene->materialContainer[intersect->plane->materialId];
+		break;
+	case CYLINDER:
+		// normal already returned from intersection function, so nothing to do here
+		intersect->material = &scene->materialContainer[intersect->cylinder->materialId];
+		break;
+	}
+
+	// calculate view projection
+	intersect->viewProjection = dot(viewRay->dir, intersect->normal);
+	//intersect->viewProjection = viewRay->dir * intersect->normal;
+
+	// detect if we are inside an object (needed for refraction)
+	intersect->insideObject = (dot(intersect->normal, viewRay->dir) > 0.0f);
+	//intersect->insideObject = (intersect->normal * viewRay->dir > 0.0f);
+
+	// if inside an object, reverse the normal
+	if (intersect->insideObject)
+	{
+		intersect->normal = intersect->normal * -1.0f;
+	}
+}
+/*
+// apply diffuse lighting with respect to material's colouring
+float3 applyDiffuse(const Ray* lightRay, const Light* currentLight, const Intersection* intersect)
+{
+	float3 output;
+
+	switch (intersect->material->type)
+	{
+	case GOURAUD:
+		output = intersect->material->diffuse;
+		break;
+	case CHECKERBOARD:
+		output = applyCheckerboard(intersect);
+		break;
+	case CIRCLES:
+		output = applyCircles(intersect);
+		break;
+	case WOOD:
+		output = applyWood(intersect);
+		break;
+	}
+
+	float lambert = dot(lightRay->dir, intersect->normal);
+	//float lambert = lightRay->dir * intersect->normal;
+
+	return lambert * currentLight->intensity * output;
+}*/
+
+// short-circuits when first intersection discovered, because no matter what the object will be in shadow
+bool isInShadow(const Scene* scene, const Ray* lightRay, const float lightDist)
+{
+	float t = lightDist;
+
+	// search for sphere collision
+	for (unsigned int i = 0; i < scene->numSpheres; ++i)
+	{
+		if (isSphereIntersected(&scene->sphereContainer[i], lightRay, &t))
+		{
+			return true;
+		}
+	}
+
+	// search for plane collision
+	for (unsigned int i = 0; i < scene->numPlanes; ++i)
+	{
+		if (isPlaneIntersected(&scene->planeContainer[i], lightRay, &t))
+		{
+			return true;
+		}
+	}
+
+	// search for cylinder collision
+	float3 normal; // unused here, but it's necessary for the function to work
+	for (unsigned int i = 0; i < scene->numCylinders; ++i)
+	{
+		if (isCylinderIntersected(&scene->cylinderContainer[i], lightRay, &t, &normal))
+		{
+			return true;
+		}
+	}
+
+	// not in shadow
+	return false;
+}
+
+// which is the specular contribution of the current light.
+float3 applySpecular(const Ray* lightRay, const Light* currentLight, const float fLightProjection, const Ray* viewRay, const Intersection* intersect)
+{
+	float3 blinnDir = lightRay->dir - viewRay->dir;
+	float blinn = rsqrt(dot(blinnDir, blinnDir)) * max(fLightProjection - intersect->viewProjection, 0.0f);
+	//float blinn = invsqrtf(blinnDir.dot()) * std::max(fLightProjection - intersect->viewProjection, 0.0f);
+	blinn = pow(blinn, intersect->material->power);
+	//blinn = powf(blinn, intersect->material->power);
+
+	return blinn * intersect->material->specular * currentLight->intensity;
+}
+
+// apply diffuse and specular lighting contributions for all lights in scene taking shadowing into account
+float3 applyLighting(const Scene* scene, const Ray* viewRay, const Intersection* intersect)
+{
+	// colour to return (starts as black)
+	float3 output = { 0.0f, 0.0f, 0.0f };
+
+	// same starting point for each light ray
+	Ray lightRay = { intersect->pos };
+
+	// loop through all the lights
+	for (unsigned int j = 0; j < scene->numLights; ++j)
+	{
+		// get reference to current light
+		//__global Light* currentLight = &scene->lightContainer[j];
+//__global Light* currentLight = &scene->lightContainer[j];
+	//changed instances of currentlight to be scene->lightContainer[j]
+		//const Light* currentLight = &scene->lightContainer[j];
+
+		// light ray direction need to equal the normalised vector in the direction of the current light
+		// as we need to reuse all the intermediate components for other calculations, 
+		// we calculate the normalised vector by hand instead of using the normalise function
+		lightRay.dir = scene->lightContainer[j].pos - intersect->pos;
+		//lightRay.dir = currentLight->pos - intersect->pos;
+		float angleBetweenLightAndNormal = dot(lightRay.dir, intersect->normal);
+		//float angleBetweenLightAndNormal = lightRay.dir * intersect->normal;
+
+		// skip this light if it's behind the object (ie. both light and normal pointing in the same direction)
+		if (angleBetweenLightAndNormal <= 0.0f)
+		{
+			continue;
+		}
+
+		// distance to light from intersection point (and it's inverse)
+		float lightDist = sqrt(dot(lightRay.dir, lightRay.dir));
+		//float lightDist = sqrtf(lightRay.dir.dot());
+		float invLightDist = 1.0f / lightDist;
+
+		// light ray projection
+		float lightProjection = invLightDist * angleBetweenLightAndNormal;
+
+		// normalise the light direction
+		lightRay.dir = lightRay.dir * invLightDist;
+
+		output += dot(lightRay.dir, intersect->normal) * scene->lightContainer[j].intensity * intersect->material->diffuse;
+		//output += dot(dot(lightRay.dir, intersect->normal) * scene->lightContainer[j].intensity, intersect->material->diffuse);
+		//output += intersect->material->diffuse;
+		/*
+		// only apply lighting from this light if not in shadow of some other object
+		if (!isInShadow(scene, &lightRay, lightDist))
+		{
+			// add diffuse lighting from colour / texture
+			//output += applyDiffuse(&lightRay, currentLight, intersect);
+			//only need gourand for stage 3. 
+			output += intersect->material->diffuse;
+
+			// add specular lighting
+			//output += applySpecular(&lightRay, &scene->lightContainer[j], lightProjection, viewRay, intersect);
+			output += applySpecular(&lightRay, &currentLight, lightProjection, viewRay, intersect);
+		}*/
+	}
+
+	return output;
+}
+
+Ray calculateReflection(const Ray* viewRay, const Intersection* intersect)
+{
+	// reflect the viewRay around the object's normal
+	Ray newRay = { intersect->pos, viewRay->dir - (intersect->normal * intersect->viewProjection * 2.0f) };
+
+	return newRay;
+}
+
+// refract the ray through an object
+Ray calculateRefraction(const Ray* viewRay, const Intersection* intersect, float* currentRefractiveIndex)
+{
+	// change refractive index depending on whether we are in an object or not
+	float oldRefractiveIndex = *currentRefractiveIndex;
+	*currentRefractiveIndex = intersect->insideObject ? DEFAULT_REFRACTIVE_INDEX : intersect->material->density;
+
+	// calculate refractive ratio from old index and current index
+	float refractiveRatio = oldRefractiveIndex / *currentRefractiveIndex;
+
+	// Here we take into account that the light movement is symmetrical from the observer to the source or from the source to the oberver.
+	// We then do the computation of the coefficient by taking into account the ray coming from the viewing point.
+	float fCosThetaT;
+	float fCosThetaI = fabs(intersect->viewProjection);
+	//float fCosThetaI = fabsf(intersect->viewProjection);
+
+	// glass-like material, we're computing the fresnel coefficient.
+	if (fCosThetaI >= 1.0f)
+	{
+		// In this case the ray is coming parallel to the normal to the surface
+		fCosThetaT = 1.0f;
+	}
+	else
+	{
+		float fSinThetaT = refractiveRatio * sqrt(1 - fCosThetaI * fCosThetaI);
+		//float fSinThetaT = refractiveRatio * sqrtf(1 - fCosThetaI * fCosThetaI);
+
+		// Beyond the angle (1.0f) all surfaces are purely reflective
+		fCosThetaT = (fSinThetaT * fSinThetaT >= 1.0f) ? 0.0f : sqrt(1 - fSinThetaT * fSinThetaT);
+		//fCosThetaT = (fSinThetaT * fSinThetaT >= 1.0f) ? 0.0f : sqrtf(1 - fSinThetaT * fSinThetaT);
+	}
+
+	// Here we compute the transmitted ray with the formula of Snell-Descartes
+	Ray newRay = { intersect->pos, (viewRay->dir + intersect->normal * fCosThetaI) * refractiveRatio - (intersect->normal * fCosThetaT) };
+
+	return newRay;
+}
+
 // follow a single ray until it's final destination (or maximum number of steps reached)
 float3 traceRay(const Scene* scene, Ray viewRay)
 {
-	int maxRayCast = 10;
-
-	float3 black = { 0.0f, 0.0f, 0.0f }; 								// colour value to be output
-	float3 white = { 255.0f, 255.0f, 255.0f }; 								// colour value to be output
-	//float currentRefractiveIndex = DEFAULT_REFRACTIVE_INDEX;		// current refractive index
+	float3 output = { 0.0f, 0.0f, 0.0f }; 								// colour value to be output
+	float currentRefractiveIndex = DEFAULT_REFRACTIVE_INDEX;		// current refractive index
 	float coef = 1.0f;												// amount of ray left to transmit
-	//Intersection intersect;											// properties of current intersection
+	Intersection intersect;											// properties of current intersection
 
 																	// loop until reached maximum ray cast limit (unless loop is broken out of)
-	for (int level = 0; level < maxRayCast; ++level)
+	for (int level = 0; level < MAX_RAYS_CAST; ++level)
 	{
 		// check for intersections between the view ray and any of the objects in the scene
 		// exit the loop if no intersection found
-		//if (!objectIntersection(scene, &viewRay, &intersect)) break;
-
-		float t = FLT_MAX;
-
-		for (unsigned int i = 0; i < scene->numSpheres; ++i)
-		{
-			if (isSphereIntersected(&scene->sphereContainer[i], &viewRay, &t))
-			{
-				//intersect->objectType = Intersection::PrimitiveType::SPHERE;
-				//intersect->sphere = &scene->sphereContainer[i];
-				return white;
-			}
-		}
-
+		if (!objectIntersection(scene, &viewRay, &intersect)) break;
+		
 		// calculate response to collision: ie. get normal at point of collision and material of object
-		//calculateIntersectionResponse(scene, &viewRay, &intersect);
+		calculateIntersectionResponse(scene, &viewRay, &intersect);
+		//output += dot(dot(lightRay.dir, intersect->normal) * scene->lightContainer[j].intensity, intersect->material->diffuse);
+		//output += dot(dot(lightRay.dir, intersect->normal) * scene->lightContainer[j].intensity, intersect->material->diffuse);
 
+		
 		// apply the diffuse and specular lighting 
-//if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
-
+		if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
+		/*
 		// if object has reflection or refraction component, adjust the view ray and coefficent of calculation and continue looping
-		//if (intersect.material->reflection)
-		//{
-		//	viewRay = calculateReflection(&viewRay, &intersect);
-		//	coef *= intersect.material->reflection;
-		//}
-		//else if (intersect.material->refraction)
-		//{
-		//	viewRay = calculateRefraction(&viewRay, &intersect, &currentRefractiveIndex);
-		//	coef *= intersect.material->refraction;
-		//}
-		//else
-		//{
+		if (intersect.material->reflection)
+		{
+			viewRay = calculateReflection(&viewRay, &intersect);
+			coef *= intersect.material->reflection;
+		}
+		else if (intersect.material->refraction)
+		{
+			viewRay = calculateRefraction(&viewRay, &intersect, &currentRefractiveIndex);
+			coef *= intersect.material->refraction;
+		}
+		else
+		{
 			// if no reflection or refraction, then finish looping (cast no more rays)
-		return black;
-		//}
+			return output;
+		}*/
 	}
 
 	// if the calculation coefficient is non-zero, read from the environment map
-	/*if (coef > 0.0f)
+	if (coef > 0.0f)
 	{
-		Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
+		//Material currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
+		//Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
 
-		output += coef * currentMaterial.diffuse;
-	}*/
+		output += coef * scene->materialContainer[scene->skyboxMaterialId].diffuse;
+		//output += coef * currentMaterial.diffuse;
+	}
 
-	return black;
+	return output;
 }
 
 /*float dot(float3 x){
@@ -358,10 +714,7 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 	return x.x * x.x + x.y * x.y + x.z * x.z;
 }*/
 
-float3 normalise(float3 x)
-{
-	return x * rsqrt(dot(x, x));
-}
+
 
 //TODO: add an appropriate set of parameters to transfer the data
 	//MAY BE ABLE TO REMOVE WWIDTH AND HHEIGHT (we have get_global_size fo dat)

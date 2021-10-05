@@ -405,7 +405,7 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-	program = clLoadSource(context, "Stage2/Raytrace.cl", &err);
+	program = clLoadSource(context, "Stage3/Raytrace.cl", &err);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't load/create the program\n");
 		exit(1);
