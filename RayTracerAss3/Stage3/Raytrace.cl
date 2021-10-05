@@ -450,9 +450,18 @@ float3 applyLighting(const Scene* scene, const Ray* viewRay, const Intersection*
 		// normalise the light direction
 		lightRay.dir = lightRay.dir * invLightDist;
 
-		float lambert = dot(lightRay.dir, intersect->normal);
+		//diffuse
 		output = intersect->material->diffuse;
-		output += lambert * dot(currentLight.intensity * 100000, intersect->material->diffuse);
+		float lambert = dot(lightRay.dir, intersect->normal);
+		output += lambert * dot(currentLight.intensity, intersect->material->diffuse);
+
+		//specular
+		float3 blinnDir = lightRay.dir - viewRay->dir;
+		float blinn = rsqrt(dot(blinnDir, blinnDir)) * max(lightProjection - intersect->viewProjection, 0.0f);
+		blinn = pow(blinn, intersect->material->power);
+
+		output += blinn * intersect->material->specular * currentLight.intensity;
+
 		//output += applyDiffuse(&lightRay, currentLight, intersect);
 		// only apply lighting from this light if not in shadow of some other object
 		/*if (!isInShadow(scene, &lightRay, lightDist))
@@ -463,7 +472,10 @@ float3 applyLighting(const Scene* scene, const Ray* viewRay, const Intersection*
 			// add specular lighting
 			output += applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect);
 		}*/
+
+		//printf("%f\n", currentLight.intensity);
 	}
+
 
 	return output;
 }
@@ -510,6 +522,7 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 			break;
 		}
 
+		//printf("ge\n");
 		// calculate view projection
 		intersect.viewProjection = dot(viewRay.dir, intersect.normal);
 
@@ -526,51 +539,19 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 
 		//Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
 
-		output += coef * scene->materialContainer[scene->skyboxMaterialId].diffuse;
-		/*float t = FLT_MAX;
+		//output += coef * scene->materialContainer[scene->skyboxMaterialId].diffuse;
 
-		for (unsigned int i = 0; i < scene->numSpheres; ++i)
-		{
-			if (isSphereIntersected(&scene->sphereContainer[i], &viewRay, &t))
-			{
-				intersect->objectType = SPHERE;
-				intersect->sphere = &scene->sphereContainer[i];
-				return white;
-			}
-		}*/
-
-		// calculate response to collision: ie. get normal at point of collision and material of object
-		//calculateIntersectionResponse(scene, &viewRay, &intersect);
-
-		// apply the diffuse and specular lighting 
-//if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
-
-		// if object has reflection or refraction component, adjust the view ray and coefficent of calculation and continue looping
-		//if (intersect.material->reflection)
-		//{
-		//	viewRay = calculateReflection(&viewRay, &intersect);
-		//	coef *= intersect.material->reflection;
-		//}
-		//else if (intersect.material->refraction)
-		//{
-		//	viewRay = calculateRefraction(&viewRay, &intersect, &currentRefractiveIndex);
-		//	coef *= intersect.material->refraction;
-		//}
-		//else
-		//{
-			// if no reflection or refraction, then finish looping (cast no more rays)
-		//return black;
-		//}
 		return output;
 	}
 
 	// if the calculation coefficient is non-zero, read from the environment map
-	/*if (coef > 0.0f)
+	if (coef > 0.0f)
 	{
-		Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
+		//Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
 
-		output += coef * currentMaterial.diffuse;
-	}*/
+		//output += coef * currentMaterial.diffuse;
+		output += coef * scene->materialContainer[scene->skyboxMaterialId].diffuse;
+	}
 
 	return output;
 }
@@ -683,7 +664,7 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 	//return samplesRendered;
 
 	if (iy == 0 && ix == 0) {
-		//OutputInfo(&scene);
+		OutputInfo(&scene);
 
 		printf("stanky leg\n");
 
