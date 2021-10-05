@@ -411,6 +411,63 @@ bool objectIntersection(const Scene* scene, const Ray* viewRay, Intersection* in
 
 	return true;
 }
+
+// apply diffuse and specular lighting contributions for all lights in scene taking shadowing into account
+float3 applyLighting(const Scene* scene, const Ray* viewRay, const Intersection* intersect)
+{
+	// colour to return (starts as black)
+	float3 output = { 0.0f, 0.0f, 0.0f };
+
+	// same starting point for each light ray
+	Ray lightRay = { intersect->pos };
+
+	// loop through all the lights
+	for (unsigned int j = 0; j < scene->numLights; ++j)
+	{
+		// get reference to current light
+		const Light currentLight = scene->lightContainer[j]; //no longer a pointer.
+
+		// light ray direction need to equal the normalised vector in the direction of the current light
+		// as we need to reuse all the intermediate components for other calculations, 
+		// we calculate the normalised vector by hand instead of using the normalise function
+		lightRay.dir = currentLight.pos - intersect->pos;
+		float angleBetweenLightAndNormal = dot(lightRay.dir, intersect->normal);
+
+		// skip this light if it's behind the object (ie. both light and normal pointing in the same direction)
+		if (angleBetweenLightAndNormal <= 0.0f)
+		{
+			continue;
+		}
+
+		// distance to light from intersection point (and it's inverse)
+		float lightDist = sqrt(dot(lightRay.dir, lightRay.dir));
+		//float lightDist = sqrt(lightRay.dir.dot());
+		float invLightDist = 1.0f / lightDist;
+
+		// light ray projection
+		float lightProjection = invLightDist * angleBetweenLightAndNormal;
+
+		// normalise the light direction
+		lightRay.dir = lightRay.dir * invLightDist;
+
+		float lambert = dot(lightRay.dir, intersect->normal);
+		output = intersect->material->diffuse;
+		output += lambert * dot(currentLight.intensity * 100000, intersect->material->diffuse);
+		//output += applyDiffuse(&lightRay, currentLight, intersect);
+		// only apply lighting from this light if not in shadow of some other object
+		/*if (!isInShadow(scene, &lightRay, lightDist))
+		{
+			// add diffuse lighting from colour / texture
+			output += applyDiffuse(&lightRay, currentLight, intersect);
+
+			// add specular lighting
+			output += applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect);
+		}*/
+	}
+
+	return output;
+}
+
 // follow a single ray until it's final destination (or maximum number of steps reached)
 float3 traceRay(const Scene* scene, Ray viewRay)
 {
@@ -454,18 +511,22 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 		}
 
 		// calculate view projection
-		intersect.viewProjection = dot(viewRay->dir, intersect->normal);
+		intersect.viewProjection = dot(viewRay.dir, intersect.normal);
 
 		// detect if we are inside an object (needed for refraction)
-		intersect.insideObject = (dot(intersect->normal, viewRay->dir) > 0.0f);
+		intersect.insideObject = (dot(intersect.normal, viewRay.dir) > 0.0f);
 
 		// if inside an object, reverse the normal
-		if (intersect->insideObject)
+		if (intersect.insideObject)
 		{
 			intersect.normal = intersect.normal * -1.0f;
 		}
 
 		if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
+
+		//Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
+
+		output += coef * scene->materialContainer[scene->skyboxMaterialId].diffuse;
 		/*float t = FLT_MAX;
 
 		for (unsigned int i = 0; i < scene->numSpheres; ++i)
