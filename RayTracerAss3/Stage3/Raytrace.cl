@@ -1,5 +1,15 @@
-﻿
+﻿__constant float EPSILON = 0.01f;
+__constant int MAX_RAYS_CAST = 10;
+__constant float DEFAULT_REFRACTIVE_INDEX = 1.0f;
+__constant const float MAX_RAY_DISTANCE = FLT_MAX;
 
+enum PrimitiveType { NONE, SPHERE, PLANE, CYLINDER };
+
+
+float3 normalise(float3 x)
+{
+	return x * rsqrt(dot(x, x));
+}
 //colour has been changed to int3 (NOW THEY"RE FLOAT3)
 //point and vector are float3.
 
@@ -60,6 +70,26 @@ typedef struct Cylinder
 	float size;					// radius of cylinder
 	unsigned int materialId;	// material id
 } Cylinder;
+
+typedef struct Intersection
+{
+	enum PrimitiveType objectType;	// type of object intersected with
+
+	float3 pos;											// point of intersection
+	float3 normal;										// normal at point of intersection
+	float viewProjection;								// view projection 
+	bool insideObject;									// whether or not inside an object
+
+	__global Material* material;									// material of object
+
+	// object collided with
+	union
+	{
+		__global Sphere* sphere;
+		__global Cylinder* cylinder;
+		__global Plane* plane;
+	};
+} Intersection;
 
 typedef struct Scene
 {
@@ -205,58 +235,99 @@ void OutputInfo(const Scene* scene)
 	Plane* planeContainer;
 	Cylinder* cylinderContainer;*/
 	// updates intersection structure if collision occurs
-/*
-bool objectIntersection(const Scene* scene, const Ray* viewRay, Intersection* intersect)
+
+bool isCylinderIntersected(__global Cylinder* cy, const Ray* r, float* t, float3* normal)
 {
-	// set default distance to be a long long way away
-	float t = MAX_RAY_DISTANCE;
+	// vector between start and end of the cylinder (cylinder axis, i.e. ca)
+	float3 ca = cy->p2 - cy->p1;
 
-	// no intersection found by default
-	intersect->objectType = Intersection::PrimitiveType::NONE;
+	// vector between ray origin and start of the cylinder
+	float3 oc = r->start - cy->p1;
 
-	// search for sphere collisions, storing closest one found
-	for (unsigned int i = 0; i < scene->numSpheres; ++i)
+	// cache some dot-products 
+	float caca = dot(ca, ca);
+	//float caca = ca * ca;
+	float card = dot(ca, r->dir);
+	//float card = ca * r->dir;
+	float caoc = dot(ca, oc);
+	//float caoc = ca * oc;
+
+	// calculate values for coefficients of line-cylinder equation
+	float a = caca - card * card;
+	float b = caca * dot(oc, r->dir) - caoc * card;
+	//float b = caca * (oc * r->dir) - caoc * card;
+	float c = caca * dot(oc, oc) - caoc * caoc - cy->size * cy->size * caca;
+	//float c = caca * (oc * oc) - caoc * caoc - cy->size * cy->size * caca;
+
+	// first half of distance calculation (distance squared)
+	float h = b * b - a * c;
+
+	// if ray doesn't intersect with infinite cylinder, exit
+	if (h < 0.0f) return false;
+
+	// second half of distance calculation (distance)
+	h = sqrt(h);
+
+	// calculate point of intersection (on infinite cylinder)
+	float tBody = (-b - h) / a;
+
+	// calculate distance along cylinder
+	float y = caoc + tBody * card;
+
+	// check intersection point is on the length of the cylinder
+	if (y > 0 && y < caca)
 	{
-		if (isSphereIntersected(&scene->sphereContainer[i], viewRay, &t))
+		// check to see if the collision point on the cylinder body is closer than the time parameter
+		if (tBody > EPSILON && tBody < *t)
 		{
-			intersect->objectType = Intersection::PrimitiveType::SPHERE;
-			intersect->sphere = &scene->sphereContainer[i];
+			*t = tBody;
+			*normal = (oc + (r->dir * tBody - ca * y / caca)) / cy->size;
+			return true;
 		}
 	}
-/*
-	// search for plane collisions, storing closest one found
-	for (unsigned int i = 0; i < scene->numPlanes; ++i)
+
+	// calculate point of intersection on plane containing cap
+	float tCaps = (((y < 0.0f) ? 0.0f : caca) - caoc) / card;
+
+	float valToAbs = b + a * tCaps;
+	// check intersection point is within the radius of the cap
+	if (fabs(b + a * tCaps) < h)
+		//if (abs(b + a * tCaps) < h)
 	{
-		if (isPlaneIntersected(&scene->planeContainer[i], viewRay, &t))
+		// check to see if the collision point on the cylinder cap is closer than the time parameter
+		if (tCaps > EPSILON && tCaps < *t)
 		{
-			intersect->objectType = Intersection::PrimitiveType::PLANE;
-			intersect->plane = &scene->planeContainer[i];
+			*t = tCaps;
+			*normal = ca * rsqrt(caca) * sign(y);
+			//*normal = ca * invsqrtf(caca) * sign(y);
+			return true;
 		}
 	}
 
-	// search for cylinder collisions, storing closest one found (and the normal at that point)
-	Vector normal;
-	for (unsigned int i = 0; i < scene->numCylinders; ++i)
+	return false;
+}
+bool isPlaneIntersected(__global const Plane* p, const Ray* r, float* t)
+{
+	// angle between ray and surface normal
+	float angle = dot(r->dir, p->normal);
+
+	// no intersection if ray and plane are parallel
+	if (angle == 0.0f) return false;
+
+	// find point of intersection
+	float t0 = dot((p->pos - r->start), p->normal) / angle;
+
+	// check to see if plane collision point is closer than time parameter
+	if (t0 > EPSILON && t0 < *t)
 	{
-		if (isCylinderIntersected(&scene->cylinderContainer[i], viewRay, &t, &normal))
-		{
-			intersect->objectType = Intersection::PrimitiveType::CYLINDER;
-			intersect->normal = normal;
-			intersect->cylinder = &scene->cylinderContainer[i];
-		}
+		*t = t0;
+		return true;
 	}
 
-	// nothing detected, return false
-	if (intersect->objectType == Intersection::PrimitiveType::NONE)
-	{
-		return false;
-	}
-	
-	// calculate the point of the intersection
-	intersect->pos = viewRay->start + viewRay->dir * t;
+	return false;
+}
 
-	return true;
-}*/
+
 bool isSphereIntersected(__global Sphere* s, const Ray* r, float* t)
 {
 	float EPSILON = 0.01f;
@@ -288,35 +359,124 @@ bool isSphereIntersected(__global Sphere* s, const Ray* r, float* t)
 
 	return false;
 }
+
+bool objectIntersection(const Scene* scene, const Ray* viewRay, Intersection* intersect)
+{
+	// set default distance to be a long long way away
+	float t = MAX_RAY_DISTANCE;
+
+	// no intersection found by default
+	intersect->objectType = NONE;
+
+	// search for sphere collisions, storing closest one found
+	for (unsigned int i = 0; i < scene->numSpheres; ++i)
+	{
+		if (isSphereIntersected(&scene->sphereContainer[i], viewRay, &t))
+		{
+			intersect->objectType = SPHERE;
+			intersect->sphere = &scene->sphereContainer[i];
+		}
+	}
+
+	// search for plane collisions, storing closest one found
+	for (unsigned int i = 0; i < scene->numPlanes; ++i)
+	{
+		if (isPlaneIntersected(&scene->planeContainer[i], viewRay, &t))
+		{
+			intersect->objectType = PLANE;
+			intersect->plane = &scene->planeContainer[i];
+		}
+	}
+
+	// search for cylinder collisions, storing closest one found (and the normal at that point)
+	float3 normal;
+	for (unsigned int i = 0; i < scene->numCylinders; ++i)
+	{
+		if (isCylinderIntersected(&scene->cylinderContainer[i], viewRay, &t, &normal))
+		{
+			intersect->objectType = CYLINDER;
+			intersect->normal = normal;
+			intersect->cylinder = &scene->cylinderContainer[i];
+		}
+	}
+
+	// nothing detected, return false
+	if (intersect->objectType == NONE)
+	{
+		return false;
+	}
+
+	// calculate the point of the intersection
+	intersect->pos = viewRay->start + viewRay->dir * t;
+
+	return true;
+}
 // follow a single ray until it's final destination (or maximum number of steps reached)
 float3 traceRay(const Scene* scene, Ray viewRay)
 {
+	float3 output = { 0.0f, 0.0f, 0.0f };
 	int maxRayCast = 10;
+
+	float3 red = { 255.0f, 0.0f, 0.0f };
+	float3 green = { 0.0f, 255.0f, 0.0f };
+	float3 blue = { 0.0f, 0.0f, 255.0f };
 
 	float3 black = { 0.0f, 0.0f, 0.0f }; 								// colour value to be output
 	float3 white = { 255.0f, 255.0f, 255.0f }; 								// colour value to be output
 	//float currentRefractiveIndex = DEFAULT_REFRACTIVE_INDEX;		// current refractive index
 	float coef = 1.0f;												// amount of ray left to transmit
-	//Intersection intersect;											// properties of current intersection
+	Intersection intersect;											// properties of current intersection
 
 																	// loop until reached maximum ray cast limit (unless loop is broken out of)
 	for (int level = 0; level < maxRayCast; ++level)
 	{
 		// check for intersections between the view ray and any of the objects in the scene
 		// exit the loop if no intersection found
-		//if (!objectIntersection(scene, &viewRay, &intersect)) break;
+		if (!objectIntersection(scene, &viewRay, &intersect)) break;
 
-		float t = FLT_MAX;
+		switch (intersect.objectType)
+		{
+		case SPHERE:
+			//output = red;
+			intersect.normal = normalise(intersect.pos - intersect.sphere->pos);
+			intersect.material = &scene->materialContainer[intersect.sphere->materialId];
+			break;
+		case PLANE:
+			//output = green;
+			intersect.normal = intersect.plane->normal;
+			intersect.material = &scene->materialContainer[intersect.plane->materialId];
+			break;
+		case CYLINDER:			
+			//normal already returned from intersection function, so nothing to do here
+			//output = blue;
+			intersect.material = &scene->materialContainer[intersect.cylinder->materialId];
+			break;
+		}
+
+		// calculate view projection
+		intersect.viewProjection = dot(viewRay->dir, intersect->normal);
+
+		// detect if we are inside an object (needed for refraction)
+		intersect.insideObject = (dot(intersect->normal, viewRay->dir) > 0.0f);
+
+		// if inside an object, reverse the normal
+		if (intersect->insideObject)
+		{
+			intersect.normal = intersect.normal * -1.0f;
+		}
+
+		if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
+		/*float t = FLT_MAX;
 
 		for (unsigned int i = 0; i < scene->numSpheres; ++i)
 		{
 			if (isSphereIntersected(&scene->sphereContainer[i], &viewRay, &t))
 			{
-				//intersect->objectType = Intersection::PrimitiveType::SPHERE;
-				//intersect->sphere = &scene->sphereContainer[i];
+				intersect->objectType = SPHERE;
+				intersect->sphere = &scene->sphereContainer[i];
 				return white;
 			}
-		}
+		}*/
 
 		// calculate response to collision: ie. get normal at point of collision and material of object
 		//calculateIntersectionResponse(scene, &viewRay, &intersect);
@@ -338,8 +498,9 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 		//else
 		//{
 			// if no reflection or refraction, then finish looping (cast no more rays)
-		return black;
+		//return black;
 		//}
+		return output;
 	}
 
 	// if the calculation coefficient is non-zero, read from the environment map
@@ -350,7 +511,7 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 		output += coef * currentMaterial.diffuse;
 	}*/
 
-	return black;
+	return output;
 }
 
 /*float dot(float3 x){
@@ -358,10 +519,7 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 	return x.x * x.x + x.y * x.y + x.z * x.z;
 }*/
 
-float3 normalise(float3 x)
-{
-	return x * rsqrt(dot(x, x));
-}
+
 
 //TODO: add an appropriate set of parameters to transfer the data
 	//MAY BE ABLE TO REMOVE WWIDTH AND HHEIGHT (we have get_global_size fo dat)
