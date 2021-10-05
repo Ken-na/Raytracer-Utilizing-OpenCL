@@ -227,6 +227,7 @@ void OutputInfo(const Scene* scene)
 			materials[i].refraction,
 			materials[i].density);
 	}
+
 }
 
 /*	Material* materialContainer;
@@ -563,12 +564,6 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 	float currentRefractiveIndex = DEFAULT_REFRACTIVE_INDEX;		// current refractive index
 	float coef = 1.0f;												// amount of ray left to transmit
 	Intersection intersect;
-
-	float3 red = { 255.0f, 0.0f, 0.0f };
-	float3 green = { 0.0f, 255.0f, 0.0f };
-	float3 blue = { 0.0f, 0.0f, 255.0f };
-
-	float3 g = { 255.0f, 255.0f, 255.0f };
 																	// loop until reached maximum ray cast limit (unless loop is broken out of)
 	for (int level = 0; level < MAX_RAYS_CAST; ++level)
 	{
@@ -727,7 +722,7 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 		output.y *= 255;
 		output.z *= 255;
 
-		out[iy * width + ix] = (((int)(output.x) << 16) | ((int)(output.y) << 8) | (int)(output.z));
+		out[iy * width + ix] = (((int)(output.z) << 16) | ((int)(output.y) << 8) | (int)(output.x));
 		//*out++ = (((int)(output.x) << 16) | ((int)(output.y) << 8) | (int)(output.z));
 		//*out++ = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
 		//if (!testMode)
@@ -756,7 +751,7 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 
 
 
-		//OutputInfo(&scene);
+		OutputInfo(&scene);
 
 		printf("stanky leg\n");
 
