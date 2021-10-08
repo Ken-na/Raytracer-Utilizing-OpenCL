@@ -315,8 +315,8 @@ int main(int argc, char* argv[])
 		}
 		else if (strcmp(argv[i], "-samples") == 0) //stage one ignores samples flag. was getting an error when this was commented out
 		{
-			//samples = atoi(argv[++i]);
-			i++;
+			samples = atoi(argv[++i]);
+			//i++;
 			//samples = 1;
 		}
 		else if (strcmp(argv[i], "-input") == 0)

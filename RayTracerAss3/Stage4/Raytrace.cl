@@ -645,6 +645,49 @@ void calculateIntersectionResponse(const Scene* scene, const Ray* viewRay, Inter
 	}
 }
 
+Ray calculateReflection(const Ray* viewRay, const Intersection* intersect)
+{
+	// reflect the viewRay around the object's normal
+	Ray newRay = { intersect->pos, viewRay->dir - (intersect->normal * intersect->viewProjection * 2.0f) };
+
+	return newRay;
+}
+
+// refract the ray through an object
+Ray calculateRefraction(const Ray* viewRay, const Intersection* intersect, float* currentRefractiveIndex)
+{
+	// change refractive index depending on whether we are in an object or not
+	float oldRefractiveIndex = *currentRefractiveIndex;
+	*currentRefractiveIndex = intersect->insideObject ? DEFAULT_REFRACTIVE_INDEX : intersect->material->density;
+
+	// calculate refractive ratio from old index and current index
+	float refractiveRatio = oldRefractiveIndex / *currentRefractiveIndex;
+
+	// Here we take into account that the light movement is symmetrical from the observer to the source or from the source to the oberver.
+	// We then do the computation of the coefficient by taking into account the ray coming from the viewing point.
+	float fCosThetaT;
+	float fCosThetaI = fabs(intersect->viewProjection);
+
+	// glass-like material, we're computing the fresnel coefficient.
+	if (fCosThetaI >= 1.0f)
+	{
+		// In this case the ray is coming parallel to the normal to the surface
+		fCosThetaT = 1.0f;
+	}
+	else
+	{
+		float fSinThetaT = refractiveRatio * sqrt(1 - fCosThetaI * fCosThetaI);
+
+		// Beyond the angle (1.0f) all surfaces are purely reflective
+		fCosThetaT = (fSinThetaT * fSinThetaT >= 1.0f) ? 0.0f : sqrt(1 - fSinThetaT * fSinThetaT);
+	}
+
+	// Here we compute the transmitted ray with the formula of Snell-Descartes
+	Ray newRay = { intersect->pos, (viewRay->dir + intersect->normal * fCosThetaI) * refractiveRatio - (intersect->normal * fCosThetaT) };
+
+	return newRay;
+}
+
 // follow a single ray until it's final destination (or maximum number of steps reached)
 float3 traceRay(const Scene* scene, Ray viewRay)
 {
@@ -661,55 +704,23 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 
 		calculateIntersectionResponse(scene, &viewRay, &intersect);
 
-
 		if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
 		
-
-		//printf("output trace pre return loop (%f, %f, %f)\n", output.x, output.y, output.z);
-		//output = dot(output, g);
-		
-
-		return output;
-		/*
-		switch (intersect.objectType)
+		if (intersect.material->reflection) //unsure if works or too subtle
 		{
-		case SPHERE:
-			//output = red;
-			intersect.normal = normalise(intersect.pos - intersect.sphere->pos);
-			intersect.material = &scene->materialContainer[intersect.sphere->materialId];
-			break;
-		case PLANE:
-			//output = green;
-			intersect.normal = intersect.plane->normal;
-			intersect.material = &scene->materialContainer[intersect.plane->materialId];
-			break;
-		case CYLINDER:			
-			//normal already returned from intersection function, so nothing to do here
-			//output = blue;
-			intersect.material = &scene->materialContainer[intersect.cylinder->materialId];
-			break;
-		}*/
-		/*
-		//printf("ge\n");
-		// calculate view projection
-		intersect.viewProjection = dot(viewRay.dir, intersect.normal);
-
-		// detect if we are inside an object (needed for refraction)
-		intersect.insideObject = (dot(intersect.normal, viewRay.dir) > 0.0f);
-
-		// if inside an object, reverse the normal
-		if (intersect.insideObject)
-		{
-			intersect.normal = intersect.normal * -1.0f;
+			viewRay = calculateReflection(&viewRay, &intersect);
+			coef *= intersect.material->reflection;
 		}
-
-		if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
-
-		//Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
-
-		//output += coef * scene->materialContainer[scene->skyboxMaterialId].diffuse;
-
-		return output;*/
+		else if (intersect.material->refraction)
+		{
+			viewRay = calculateRefraction(&viewRay, &intersect, &currentRefractiveIndex);
+			coef *= intersect.material->refraction;
+		}
+		else
+		{
+			// if no reflection or refraction, then finish looping (cast no more rays)
+			return output;
+		}
 	}
 
 	// if the calculation coefficient is non-zero, read from the environment map
