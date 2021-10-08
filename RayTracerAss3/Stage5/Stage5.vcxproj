@@ -10,6 +10,34 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Colour.h" />
+    <ClInclude Include="Config.h" />
+    <ClInclude Include="Constants.h" />
+    <ClInclude Include="ImageIO.h" />
+    <ClInclude Include="Intersection.h" />
+    <ClInclude Include="Lighting.h" />
+    <ClInclude Include="LoadCL.h" />
+    <ClInclude Include="Primitives.h" />
+    <ClInclude Include="Scene.h" />
+    <ClInclude Include="SceneObjects.h" />
+    <ClInclude Include="SimpleString.h" />
+    <ClInclude Include="Texturing.h" />
+    <ClInclude Include="Timer.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="Config.cpp" />
+    <ClCompile Include="ImageIO.cpp" />
+    <ClCompile Include="Intersection.cpp" />
+    <ClCompile Include="Lighting.cpp" />
+    <ClCompile Include="LoadCL.cpp" />
+    <ClCompile Include="Raytrace.cpp" />
+    <ClCompile Include="Scene.cpp" />
+    <ClCompile Include="Texturing.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Raytrace.cl" />
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>15.0</VCProjectVersion>
     <ProjectGuid>{621129FF-5EB9-4BD9-AC10-7CD5477E8386}</ProjectGuid>

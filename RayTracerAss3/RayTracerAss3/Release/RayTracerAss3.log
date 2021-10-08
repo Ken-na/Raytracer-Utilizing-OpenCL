@@ -1,13 +1,1 @@
-﻿  Config.cpp
-  ImageIO.cpp
-  Intersection.cpp
-  Lighting.cpp
-  LoadCL.cpp
-  Raytrace.cpp
-  Scene.cpp
-  Texturing.cpp
-  Generating code
-  Previous IPDB not found, fall back to full compilation.
-  All 472 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
-  Finished generating code
-  RayTracerAss3.vcxproj -> D:\Applications\Work\KIT308 MULTICORE\Ass3\Assignment3Multicore\RayTracerAss3\Release\RayTracerAss3.exe
+﻿
