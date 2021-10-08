@@ -724,13 +724,12 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 	}
 
 	// if the calculation coefficient is non-zero, read from the environment map
-	/*if (coef > 0.0f)
+	if (coef > 0.0f)
 	{
 		//Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
 
-		//output += coef * currentMaterial.diffuse;
 		output += coef * scene->materialContainer[scene->skyboxMaterialId].diffuse;
-	}*/
+	}
 
 	return output;
 }
