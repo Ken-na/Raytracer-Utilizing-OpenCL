@@ -488,6 +488,42 @@ float3 applySpecular(const Ray* lightRay, __global const Light* currentLight, co
 	return blinn * intersect->material->specular * currentLight->intensity;
 }
 
+bool isInShadow(const Scene* scene, const Ray* lightRay, const float lightDist)
+{
+	float t = lightDist;
+
+	// search for sphere collision
+	for (unsigned int i = 0; i < scene->numSpheres; ++i)
+	{
+		if (isSphereIntersected(&scene->sphereContainer[i], lightRay, &t))
+		{
+			return true;
+		}
+	}
+
+	// search for plane collision
+	for (unsigned int i = 0; i < scene->numPlanes; ++i)
+	{
+		if (isPlaneIntersected(&scene->planeContainer[i], lightRay, &t))
+		{
+			return true;
+		}
+	}
+
+	// search for cylinder collision
+	float3 normal; // unused here, but it's necessary for the function to work
+	for (unsigned int i = 0; i < scene->numCylinders; ++i)
+	{
+		if (isCylinderIntersected(&scene->cylinderContainer[i], lightRay, &t, &normal))
+		{
+			return true;
+		}
+	}
+
+	// not in shadow
+	return false;
+}
+
 // apply diffuse and specular lighting contributions for all lights in scene taking shadowing into account
 float3 applyLighting(const Scene* scene, const Ray* viewRay, const Intersection* intersect)
 {
@@ -526,16 +562,14 @@ float3 applyLighting(const Scene* scene, const Ray* viewRay, const Intersection*
 		// normalise the light direction
 		lightRay.dir = lightRay.dir * invLightDist;
 
+		if (!isInShadow(scene, &lightRay, lightDist)) {
+			// add diffuse lighting from colour / texture
+			output += applyDiffuse(&lightRay, currentLight, intersect);
 
-		// add diffuse lighting from colour / texture
-		output += applyDiffuse(&lightRay, currentLight, intersect);
-
-		// add specular lighting
-		//float3 preoutput = output;
-		//printf("\n\nOutput Pre Spec: %f, %f, %f\n", output.x, output.y, output.z);
-		//printf("Specular: %f, %f, %f\n", applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).x, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).y, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).z);
-		//printf("Specular: %f, %f, %f\n", applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).x, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).y, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).z);
-		output += applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect);
+			// add specular lighting
+			output += applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect);
+		}
+		
 		
 		/*if (preoutput.x != output.x || preoutput.y != output.y || preoutput.z != output.z) {
 			printf("\n\nOutput Pre Spec: %f, %f, %f\nOutput Post Spec: %f, %f, %f\n", preoutput.x, preoutput.y, preoutput.z, output.x, output.y, output.z);
