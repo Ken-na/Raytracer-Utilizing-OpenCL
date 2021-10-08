@@ -415,7 +415,7 @@ bool objectIntersection(const Scene* scene, const Ray* viewRay, Intersection* in
 
 float3 applyDiffuse(const Ray* lightRay, __global const Light* currentLight, const Intersection* intersect)
 {
-	float3 output  = intersect->material->diffuse;
+	float3 output = intersect->material->diffuse;
 
 	/*switch (intersect->material->type)
 	{
@@ -434,6 +434,8 @@ float3 applyDiffuse(const Ray* lightRay, __global const Light* currentLight, con
 	}*/
 
 	float lambert = dot(lightRay->dir, intersect->normal);
+
+	//printf("currlight intensity: %f, %f, %f\n", lambert * currentLight->intensity.x * output, lambert * currentLight->intensity.y * output, lambert * currentLight->intensity.z * output);
 
 	return lambert * currentLight->intensity * output;
 }
@@ -490,7 +492,20 @@ float3 applyLighting(const Scene* scene, const Ray* viewRay, const Intersection*
 		output += applyDiffuse(&lightRay, currentLight, intersect);
 
 		// add specular lighting
+		//float3 preoutput = output;
+		//printf("\n\nOutput Pre Spec: %f, %f, %f\n", output.x, output.y, output.z);
+		//printf("Specular: %f, %f, %f\n", applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).x, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).y, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).z);
+		//printf("Specular: %f, %f, %f\n", applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).x, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).y, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).z);
 		output += applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect);
+		
+		/*if (preoutput.x != output.x || preoutput.y != output.y || preoutput.z != output.z) {
+			printf("\n\nOutput Pre Spec: %f, %f, %f\nOutput Post Spec: %f, %f, %f\n", preoutput.x, preoutput.y, preoutput.z, output.x, output.y, output.z);
+
+		}*/
+		
+		//printf("Output Post Spec: %f, %f, %f\n", output.x, output.y, output.z);
+
+
 		/*
 		//diffuse
 		output = intersect->material->diffuse;
@@ -718,11 +733,12 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 			}
 		}
 
-		output.x *= 255;
-		output.y *= 255;
-		output.z *= 255;
+		//output.x *= 255.0f;
+		//output.y *= 255.0f;
+		//output.z *= 255.0f;
 
-		out[iy * width + ix] = (((int)(output.z) << 16) | ((int)(output.y) << 8) | (int)(output.x));
+		out[iy * width + ix] = (unsigned char)((min(1.0f - exp(output.z * scene.exposure), 1.0f) * 255.0f)) << 16 | (unsigned char)((min(1.0f - exp(output.y * scene.exposure), 1.0f) * 255.0f)) << 8 | (unsigned char)((min(1.0f - exp(output.x * scene.exposure), 1.0f) * 255.0f));
+		//out[iy * width + ix] = (((int)(output.z * scene.exposure) << 16) | ((int)(output.y * scene.exposure) << 8) | (int)(output.x * scene.exposure));
 		//*out++ = (((int)(output.x) << 16) | ((int)(output.y) << 8) | (int)(output.z));
 		//*out++ = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
 		//if (!testMode)
@@ -743,17 +759,19 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 	//return samplesRendered;
 
 	if (iy == 0 && ix == 0) {
+
+
 		printf("output after almost everything (%f, %f, %f)\n", output.x, output.y, output.z);
 		//output.x = output.x * 255;
 		//output.y = output.y * 255;
 		//output.z = output.z * 255;
 		//printf("output after everything (%f, %f, %f)\n", output.x, output.y, output.z);
-
+		printf("Exposure: %f\n", scene.exposure);
 
 
 		OutputInfo(&scene);
 
-		printf("stanky leg\n");
+		printf("\nSAMPLES: %d\n", aaLevel);
 
 	}
 
