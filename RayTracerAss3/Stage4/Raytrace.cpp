@@ -300,7 +300,7 @@ int main(int argc, char* argv[])
 	bool testMode = false;
 
 	// default input / output filenames
-	const char* inputFilename = "Scenes/cornell.txt"; 
+	const char* inputFilename = "Scenes/allmaterials.txt"; 
 
 	char outputFilenameBuffer[1000];
 	char* outputFilename = outputFilenameBuffer;

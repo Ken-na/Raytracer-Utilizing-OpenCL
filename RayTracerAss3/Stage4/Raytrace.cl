@@ -413,11 +413,50 @@ bool objectIntersection(const Scene* scene, const Ray* viewRay, Intersection* in
 	return true;
 }
 
+float3 applyCheckerboard(const Intersection* intersect)
+{
+	float3 p = (intersect->pos - intersect->material->offset) / intersect->material->size;
+
+	int which = ((int)(floor(p.x)) + (int)(floor(p.y)) + (int)(floor(p.z))) & 1;
+
+	return (which ? intersect->material->diffuse : intersect->material->diffuse2);
+}
+
+// apply computed circular texture
+float3 applyCircles(const Intersection* intersect)
+{
+	float3 p = (intersect->pos - intersect->material->offset) / intersect->material->size;
+
+	int which = (int)(floor(sqrt(p.x * p.x + p.y * p.y + p.z * p.z))) & 1;
+
+	return (which ? intersect->material->diffuse : intersect->material->diffuse2);
+}
+
+// apply computed wood grain texture
+float3 applyWood(const Intersection* intersect)
+{
+	float3 preP = (intersect->pos - intersect->material->offset) / intersect->material->size;
+
+	// squiggle up where the point is
+	float3 p = { preP.x * cos(preP.y * 0.996f) * sin(preP.z * 1.023f),
+		cos(preP.x) * preP.y * sin(preP.z * 1.211f),
+		cos(preP.x * 1.473f) * cos(preP.y * 0.795f) * preP.z };
+
+	//p.x = p.x * cos(p.y * 0.996f) * sin(p.z * 1.023f);
+	//p.y = cos(p.x) * p.y * sin(p.z * 1.211f);
+	//p.z = cos(p.x * 1.473f) * cos(p.y * 0.795f) * p.z;
+
+	int which = (int)(floor(sqrt(p.x * p.x + p.y * p.y + p.z * p.z))) & 1;
+
+	return (which ? intersect->material->diffuse : intersect->material->diffuse2);
+}
+
 float3 applyDiffuse(const Ray* lightRay, __global const Light* currentLight, const Intersection* intersect)
 {
-	float3 output = intersect->material->diffuse;
+	//float3 output = intersect->material->diffuse;
+	float3 output = { 0.0f, 0.0f, 0.0f };
 
-	/*switch (intersect->material->type)
+	switch (intersect->material->type)
 	{
 	case GOURAUD:
 		output = intersect->material->diffuse;
@@ -431,7 +470,7 @@ float3 applyDiffuse(const Ray* lightRay, __global const Light* currentLight, con
 	case WOOD:
 		output = applyWood(intersect);
 		break;
-	}*/
+	}
 
 	float lambert = dot(lightRay->dir, intersect->normal);
 
