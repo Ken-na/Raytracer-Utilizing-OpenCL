@@ -574,4 +574,17 @@ int main(int argc, char* argv[])
 
 	// output BMP file
 	write_bmp(outputFilename, buffer, width, height, width);
+
+	//free openCl memory : ) 
+	clReleaseMemObject(clBuffer1);
+	clReleaseMemObject(clBuffer2);
+	clReleaseMemObject(clBuffer3);
+	clReleaseMemObject(clBuffer4);
+	clReleaseMemObject(clBuffer5);
+	clReleaseMemObject(clBuffer6);
+	clReleaseMemObject(clBuffer7);
+	clReleaseCommandQueue(queue);
+	clReleaseProgram(program);
+	clReleaseKernel(kernel);
+	clReleaseContext(context);
 }

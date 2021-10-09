@@ -91,9 +91,6 @@
     <None Include="Intersection.cl">
       <Filter>OpenCL Files</Filter>
     </None>
-    <None Include="Lighting.cl">
-      <Filter>OpenCL Files</Filter>
-    </None>
     <None Include="Output.cl">
       <Filter>OpenCL Files</Filter>
     </None>
