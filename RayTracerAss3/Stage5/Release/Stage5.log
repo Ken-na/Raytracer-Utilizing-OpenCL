@@ -1,8 +1,8 @@
 ﻿  Raytrace.cpp
-D:\Applications\Work\KIT308 MULTICORE\Ass3\Assignment3Multicore\RayTracerAss3\Stage5\Raytrace.cpp(377,24): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
-D:\Applications\Work\KIT308 MULTICORE\Ass3\Assignment3Multicore\RayTracerAss3\Stage5\Raytrace.cpp(377,31): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Applications\Work\KIT308 MULTICORE\Ass3\Assignment3Multicore\RayTracerAss3\Stage5\Raytrace.cpp(378,24): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
+D:\Applications\Work\KIT308 MULTICORE\Ass3\Assignment3Multicore\RayTracerAss3\Stage5\Raytrace.cpp(378,31): warning C4838: conversion from 'int' to 'size_t' requires a narrowing conversion
   Generating code
-  1 of 438 functions ( 0.2%) were compiled, the rest were copied from previous compilation.
+  0 of 438 functions ( 0.0%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
     0 functions had inline decision re-evaluated but remain unchanged
   Finished generating code
