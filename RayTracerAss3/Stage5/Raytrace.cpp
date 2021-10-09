@@ -578,13 +578,16 @@ int main(int argc, char* argv[])
 		//for (int j = 0; j < 1; j++) {
 		for (int j = 0; j < numOfCycles; j++) {
 
+			size_t workOffset[] = { 0, 0 };
+
+
 			//position = ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j);
 			//err = clSetKernelArg(kernel, 1, sizeof(int), &position);
-			err = clSetKernelArg(kernel, 1, sizeof(int), &position);
+			/*err = clSetKernelArg(kernel, 1, sizeof(int), &position);
 			if (err != CL_SUCCESS) {
 				printf("Couldn't set the kernel(1) argument = %d\n", err);
 				exit(1);
-			}
+			}*/
 		// OpenCL execution code replaces this call to render()
 			err = clEnqueueNDRangeKernel(queue, kernel, 2, workOffset, workSize, NULL, 0, NULL, NULL);
 			if (err != CL_SUCCESS) {
