@@ -509,12 +509,12 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-	err = clSetKernelArg(kernel, 1, sizeof(int), &position);
+	err = clSetKernelArg(kernel, 1, sizeof(int), &width);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't set the kernel(1) argument = %d\n", err);
 		exit(1);
 	}
-	err = clSetKernelArg(kernel, 2, sizeof(int), &blockSize); //may be able to remove. 
+	err = clSetKernelArg(kernel, 2, sizeof(int), &height);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't set the kernel(2) argument = %d\n", err);
 		exit(1);
@@ -562,7 +562,17 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 	
-
+	err = clSetKernelArg(kernel, 10, sizeof(int), &blockSize);
+	if (err != CL_SUCCESS) {
+		printf("Couldn't set the kernel(10) argument\n");
+		exit(1);
+	}
+	/*
+	err = clSetKernelArg(kernel, 11, sizeof(int), &0);
+	if (err != CL_SUCCESS) {
+		printf("Couldn't set the kernel(9) argument\n");
+		exit(1);
+	}*/
 	
 
 
@@ -578,7 +588,7 @@ int main(int argc, char* argv[])
 		if (i > 0) timer.start();
 
 		//for (int j = 0; j < 1; j++) {
-		for (int j = 0; j < 4; j++) {
+		for (int j = 1; j < 2; j++) {
 
 			size_t workOffset[] = { 0, 0};
 			//size_t workOffset[] = { blockSize * j, blockSize * j };
@@ -586,9 +596,9 @@ int main(int argc, char* argv[])
 
 			//position = ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j);
 			//err = clSetKernelArg(kernel, 1, sizeof(int), &position);
-			err = clSetKernelArg(kernel, 1, sizeof(int), &position);
+			err = clSetKernelArg(kernel, 11, sizeof(int), &j);
 			if (err != CL_SUCCESS) {
-				printf("Couldn't set the kernel(1) argument = %d\n", err);
+				printf("Couldn't set the kernel(11) argument = %d\n", err);
 				exit(1);
 			}
 		// OpenCL execution code replaces this call to render()
@@ -614,12 +624,16 @@ int main(int argc, char* argv[])
 				}
 			}
 
+
+
 			position += blockSize;
 			//position = ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j);
 
 			//workOffset[0] += blockSize;
 			//workOffset[1] += blockSize;
 		}
+		
+		//combBuffer[0] = (((int)(255) << 16) | ((int)(255) << 8) | (int)(255));
 		
 		printf("\nreached end of opencl\n\n");
 		//samplesRendered = render(&scene, width, height, samples, testMode);								// raytrace scene

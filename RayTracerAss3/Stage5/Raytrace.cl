@@ -737,13 +737,13 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 
 //TODO: add an appropriate set of parameters to transfer the data
 	//MAY BE ABLE TO REMOVE WWIDTH AND HHEIGHT (we have get_global_size fo dat)
-__kernel void func(__global struct Scene* scenein, int pos, int blockSize, int aaLevel,
+__kernel void func(__global struct Scene* scenein, int width, int height, int aaLevel,
 	__global Material* materialContainerIn,
 	__global Light* lightContainerIn,
 	__global Sphere* sphereContainerIn,
 	__global Plane* planeContainerIn,
 	__global Cylinder* cylinderContainerIn,
-	__global int* out) {
+	__global int* out, int blockSize, int pos) {
 
 	Scene scene = *scenein;
 
@@ -755,11 +755,11 @@ __kernel void func(__global struct Scene* scenein, int pos, int blockSize, int a
 
 
 
-	unsigned int width = get_global_size(0);
-	unsigned int height = get_global_size(1);
+	//unsigned int width = get_global_size(0);
+	//unsigned int height = get_global_size(1);
 
-	unsigned int ix = get_global_id(0) + pos;
-	unsigned int iy = get_global_id(1) + pos;
+	unsigned int ix = get_global_id(0);
+	unsigned int iy = get_global_id(1);
 	//unsigned int iy = get_global_id(1) + pos;
 
 	float PIOVER180 = 0.017453292519943295769236907684886f;
@@ -847,9 +847,9 @@ __kernel void func(__global struct Scene* scenein, int pos, int blockSize, int a
 	
 	//return samplesRendered;
 
-		printf("GARN (pos = %d) FROM X = %d / Y = %d\n", pos, ix, iy);
+		//printf("GARN (pos = %d) FROM X = %d / Y = %d\n", pos, ix, iy);
 
-	if (iy == 0 && ix == 0) {
+	if (iy == blockSize * pos && ix == blockSize * pos) {
 
 
 		//printf("output after almost everything (%f, %f, %f)\n", output.x, output.y, output.z);
