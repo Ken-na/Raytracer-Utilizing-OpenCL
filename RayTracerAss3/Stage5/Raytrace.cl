@@ -869,7 +869,7 @@ __kernel void func(__global struct Scene* scenein, int width, int height, int aa
 
 		//printf("\nSAMPLES: %d\n", aaLevel);
 
-		printf("GARN (pos = %d) FROM X = %d / Y = %d\n", pos, ix, iy);
+		//printf("GARN (pos = %d) FROM X = %d / Y = %d\n", pos, ix, iy);
 		//printf("GARN FROM X = %d / Y = %d\n", ix2, iy2);
 		//printf("GARN FROM X = %d / Y = %d -> X = %d / Y = %d", ix2, ixy, ix2 + pos, ixy + pos);
 

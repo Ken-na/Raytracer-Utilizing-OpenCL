@@ -643,7 +643,7 @@ int main(int argc, char* argv[])
 
 		//combBuffer[0] = (((int)(255) << 16) | ((int)(255) << 8) | (int)(255));
 
-			printf("\nreached end of opencl\n\n");
+			//printf("\nreached end of opencl\n\n");
 			//samplesRendered = render(&scene, width, height, samples, testMode);								// raytrace scene
 		}
 		timer.end();																					// record end time
