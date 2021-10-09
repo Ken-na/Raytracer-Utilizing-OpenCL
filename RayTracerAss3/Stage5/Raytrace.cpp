@@ -14,6 +14,7 @@ It is free to use for educational purpose and cannot be redistributed outside of
 #include "LoadCL.h"
 
 unsigned int buffer[MAX_WIDTH * MAX_HEIGHT];
+unsigned int combBuffer[MAX_WIDTH * MAX_HEIGHT];
 
 // reflect the ray from an object
 Ray calculateReflection(const Ray* viewRay, const Intersection* intersect)
@@ -373,8 +374,9 @@ int main(int argc, char* argv[])
 	cl_command_queue queue;
 	cl_program program;
 	cl_kernel kernel;
-	size_t workOffset[] = { 0, 0 };
-	size_t workSize[] = { width, height };
+	//size_t workOffset[] = { 0, 0 };
+	//size_t workSize[] = { width, height };
+	size_t workSize[] = { blockSize, blockSize };
 
 	cl_mem clBuffer1;
 	cl_mem clBuffer2;
@@ -576,18 +578,19 @@ int main(int argc, char* argv[])
 		if (i > 0) timer.start();
 
 		//for (int j = 0; j < 1; j++) {
-		for (int j = 0; j < numOfCycles; j++) {
+		for (int j = 0; j < 4; j++) {
 
-			size_t workOffset[] = { 0, 0 };
+			size_t workOffset[] = { 0, 0};
+			//size_t workOffset[] = { blockSize * j, blockSize * j };
 
 
 			//position = ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j);
 			//err = clSetKernelArg(kernel, 1, sizeof(int), &position);
-			/*err = clSetKernelArg(kernel, 1, sizeof(int), &position);
+			err = clSetKernelArg(kernel, 1, sizeof(int), &position);
 			if (err != CL_SUCCESS) {
 				printf("Couldn't set the kernel(1) argument = %d\n", err);
 				exit(1);
-			}*/
+			}
 		// OpenCL execution code replaces this call to render()
 			err = clEnqueueNDRangeKernel(queue, kernel, 2, workOffset, workSize, NULL, 0, NULL, NULL);
 			if (err != CL_SUCCESS) {
@@ -595,14 +598,24 @@ int main(int argc, char* argv[])
 				exit(1);
 			}
 
-			err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * width * height, buffer, 0, NULL, NULL);
+			//err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * width * height, buffer, 0, NULL, NULL);
 			//err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * blockSize * blockSize, buffer + ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j), 0, NULL, NULL);
-			//err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * blockSize * blockSize, buffer, 0, NULL, NULL);
+			err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * blockSize * blockSize, buffer, 0, NULL, NULL);
 			if (err != CL_SUCCESS) {
 				printf("Couldn't enqueue the read buffer (%d) command = %d\n", j, err);
 				exit(1);
 			}
+
+			//for (int k = position; k < position + blockSize; k++) {
+			for (int k = 0; k < width * height; k++) { //not efficient but it works 
+
+				if (buffer[k] != 0) {
+					combBuffer[k] = buffer[k];
+				}
+			}
+
 			position += blockSize;
+			//position = ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j);
 
 			//workOffset[0] += blockSize;
 			//workOffset[1] += blockSize;
@@ -633,5 +646,5 @@ int main(int argc, char* argv[])
 	}
 
 	// output BMP file
-	write_bmp(outputFilename, buffer, width, height, width);
+	write_bmp(outputFilename, combBuffer, width, height, width);
 }

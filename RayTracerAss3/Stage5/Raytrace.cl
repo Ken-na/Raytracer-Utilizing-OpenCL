@@ -847,6 +847,8 @@ __kernel void func(__global struct Scene* scenein, int pos, int blockSize, int a
 	
 	//return samplesRendered;
 
+		printf("GARN (pos = %d) FROM X = %d / Y = %d\n", pos, ix, iy);
+
 	if (iy == 0 && ix == 0) {
 
 
