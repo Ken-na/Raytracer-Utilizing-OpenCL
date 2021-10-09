@@ -1,4 +1,8 @@
-﻿
+﻿float3 normalise(float3 x)
+{
+	return x * rsqrt(dot(x, x));
+}
+
 bool isCylinderIntersected(__global Cylinder* cy, const Ray* r, float* t, float3* normal)
 {
 	// vector between start and end of the cylinder (cylinder axis, i.e. ca)

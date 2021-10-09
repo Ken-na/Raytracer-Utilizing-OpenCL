@@ -1,10 +1,4 @@
-﻿
-enum PrimitiveType { NONE, SPHERE, PLANE, CYLINDER };
-
-float3 normalise(float3 x)
-{
-	return x * rsqrt(dot(x, x));
-}
+﻿enum PrimitiveType { NONE, SPHERE, PLANE, CYLINDER };
 
 typedef struct Ray
 {
