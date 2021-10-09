@@ -2,6 +2,7 @@
 __constant int MAX_RAYS_CAST = 10;
 __constant float DEFAULT_REFRACTIVE_INDEX = 1.0f;
 __constant const float MAX_RAY_DISTANCE = FLT_MAX;
+__constant float PIOVER180 = 0.017453292519943295769236907684886f;
 
 enum PrimitiveType { NONE, SPHERE, PLANE, CYLINDER };
 
@@ -545,8 +546,6 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 	unsigned int ix = get_global_id(0);
 	unsigned int iy = get_global_id(1);
 
-	float PIOVER180 = 0.017453292519943295769236907684886f;
-	
 	// angle between each successive ray cast (per pixel, anti-aliasing uses a fraction of this)
 	const float dirStepSize = 1.0f / (0.5f * width / tan(PIOVER180 * 0.5f * scene.cameraFieldOfView));
 

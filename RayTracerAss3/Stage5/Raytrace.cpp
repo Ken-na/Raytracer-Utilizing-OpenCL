@@ -191,9 +191,6 @@ void OutputInfo(const Scene* scene)
 	printf("sizeof(Ray):      %zd\n", sizeof(Ray));
 	printf("sizeof(Light):    %zd\n", sizeof(Light));
 	printf("sizeof(Sphere):   %zd\n", sizeof(Sphere));
-		//printf("sizeof(Sphere->pos):   %zd\n", sizeof(Point));
-		//printf("sizeof(Sphere->size):   %zd\n", sizeof(float));
-		//printf("sizeof(Sphere->material):   %zd\n", sizeof(unsigned int));
 	printf("sizeof(Plane):    %zd\n", sizeof(Plane));
 	printf("sizeof(Cylinder): %zd\n", sizeof(Cylinder));
 	printf("sizeof(Material): %zd\n", sizeof(Material));
@@ -308,8 +305,6 @@ int main(int argc, char* argv[])
 	char outputFilenameBuffer[1000];
 	char* outputFilename = outputFilenameBuffer;
 
-	int position = 0;
-
 	// do stuff with command line args
 	for (int i = 1; i < argc; i++)
 	{
@@ -361,9 +356,6 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	// display info about the current scene
-	//OutputInfo(&scene);
-
 	Timer timer;		// create timer
 
 	// OpenCL setup code goes here
@@ -374,8 +366,6 @@ int main(int argc, char* argv[])
 	cl_command_queue queue;
 	cl_program program;
 	cl_kernel kernel;
-	//size_t workOffset[] = { 0, 0 };
-	//size_t workSize[] = { width, height };
 	size_t workSize[] = { blockSize, blockSize };
 
 	cl_mem clBuffer1;
@@ -385,10 +375,6 @@ int main(int argc, char* argv[])
 	cl_mem clBuffer5;
 	cl_mem clBuffer6;
 	cl_mem clBuffer7;
-
-	//unsigned int outBuffer[width * height];
-	//unsigned int outBuffer[4];
-	//unsigned int outBuffer[MAX_WIDTH * MAX_HEIGHT];
 
 	err = clGetPlatformIDs(1, &platform, NULL);
 	if (err != CL_SUCCESS)
@@ -479,7 +465,6 @@ int main(int argc, char* argv[])
 	}
 	else {
 		int dummyInt2 = -1;
-		//clBuffer5 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(scene.planeContainer), scene.planeContainer, &err);
 		clBuffer5 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &dummyInt2, &err);
 	}
 
@@ -492,7 +477,6 @@ int main(int argc, char* argv[])
 	}
 	else {
 		int dummyInt3 = -1;
-		//clBuffer6 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(scene.cylinderContainer), scene.cylinderContainer, &err);
 		clBuffer6 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &dummyInt3, &err);
 	}
 
@@ -567,19 +551,12 @@ int main(int argc, char* argv[])
 		printf("Couldn't set the kernel(10) argument\n");
 		exit(1);
 	}
-	/*
-	err = clSetKernelArg(kernel, 11, sizeof(int), &0);
-	if (err != CL_SUCCESS) {
-		printf("Couldn't set the kernel(9) argument\n");
-		exit(1);
-	}*/
-	
 
-
-	// first time and total time taken to render all runs (used to calculate average)
-	//printf("\nPOSITION: %d\n" + position);
+	// display info about the current scene
+	//OutputInfo(&scene);
 
 	int numOfCycles = (width / blockSize) * (height / blockSize);
+	// first time and total time taken to render all runs (used to calculate average)
 	int firstTime = 0;
 	int totalTime = 0;
 	int samplesRendered = 0;
@@ -592,22 +569,14 @@ int main(int argc, char* argv[])
 		if (i > 0) timer.start();
 
 		for (int j = 0; j < numOfCycles; j++) {
-			//for (int x = 0; x < (width / blockSize) - 1; x++) {
-			//	for (int y = 0; y < (height / blockSize) - 1; y++) {
 			size_t workOffset[] = { 0, 0 };
 			size_t workSize[] = { blockSize, blockSize };
-			//size_t workOffset[] = { blockSize * x, blockSize * y};
-			//size_t workOffset[] = { blockSize * j, blockSize * j };
-
-			//pos = 2;
-			//position = ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j);
-			//err = clSetKernelArg(kernel, 1, sizeof(int), &position);
+			
 			err = clSetKernelArg(kernel, 11, sizeof(int), &pos);
 			if (err != CL_SUCCESS) {
 				printf("Couldn't set the kernel(11) argument = %d\n", err);
 				exit(1);
 			}
-			// OpenCL execution code replaces this call to render()
 			err = clEnqueueNDRangeKernel(queue, kernel, 2, workOffset, workSize, NULL, 0, NULL, NULL);
 			if (err != CL_SUCCESS) {
 				printf("Couldn't enqueue the kernel execution (%d) command = %d\n", pos, err);
@@ -615,36 +584,12 @@ int main(int argc, char* argv[])
 			}
 
 			err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * width * height, buffer, 0, NULL, NULL);
-			//err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * blockSize * blockSize, buffer + ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j), 0, NULL, NULL);
-			//err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * blockSize * blockSize, buffer, 0, NULL, NULL);
 			if (err != CL_SUCCESS) {
 				printf("Couldn't enqueue the read buffer (%d) command = %d\n", pos, err);
 				exit(1);
 			}
 
-			//for (int k = position; k < position + blockSize; k++) {
-			/*for (int k = 0; k < width * height; k++) { //not efficient but it works 
-
-				if (buffer[k] != 0) {
-					combBuffer[k] = buffer[k];
-				}
-			}*/
-
-			position += blockSize;
 			pos++;
-			//}
-
-
-			//position = ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j);
-
-			//workOffset[0] += blockSize;
-			//workOffset[1] += blockSize;
-		//}
-
-		//combBuffer[0] = (((int)(255) << 16) | ((int)(255) << 8) | (int)(255));
-
-			//printf("\nreached end of opencl\n\n");
-			//samplesRendered = render(&scene, width, height, samples, testMode);								// raytrace scene
 		}
 		timer.end();																					// record end time
 		if (i > 0)

@@ -551,7 +551,6 @@ int main(int argc, char* argv[])
 	// first time and total time taken to render all runs (used to calculate average)
 	int firstTime = 0;
 	int totalTime = 0;
-	int samplesRendered = 0;
 	for (int i = 0; i < times; i++)
 	{
 		if (i > 0) timer.start();
@@ -568,8 +567,6 @@ int main(int argc, char* argv[])
 			printf("Couldn't enqueue the read buffer command = %d\n", err);
 			exit(1);
 		}
-		//printf("\nreached end of opencl\n\n");
-		//samplesRendered = render(&scene, width, height, samples, testMode);								// raytrace scene
 
 		timer.end();																					// record end time
 		if (i > 0)
