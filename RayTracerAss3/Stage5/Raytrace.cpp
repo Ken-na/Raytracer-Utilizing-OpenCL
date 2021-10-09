@@ -583,61 +583,69 @@ int main(int argc, char* argv[])
 	int firstTime = 0;
 	int totalTime = 0;
 	int samplesRendered = 0;
+	int pos = 0;
+
+	int xPos = 0;
+	int yPos = 0;
 	for (int i = 0; i < times; i++)
 	{
 		if (i > 0) timer.start();
 
-		//for (int j = 0; j < 1; j++) {
-		for (int j = 1; j < 2; j++) {
-
-			size_t workOffset[] = { 0, 0};
+		for (int j = 0; j < numOfCycles; j++) {
+			//for (int x = 0; x < (width / blockSize) - 1; x++) {
+			//	for (int y = 0; y < (height / blockSize) - 1; y++) {
+			size_t workOffset[] = { 0, 0 };
+			size_t workSize[] = { blockSize, blockSize };
+			//size_t workOffset[] = { blockSize * x, blockSize * y};
 			//size_t workOffset[] = { blockSize * j, blockSize * j };
 
-
+			//pos = 2;
 			//position = ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j);
 			//err = clSetKernelArg(kernel, 1, sizeof(int), &position);
-			err = clSetKernelArg(kernel, 11, sizeof(int), &j);
+			err = clSetKernelArg(kernel, 11, sizeof(int), &pos);
 			if (err != CL_SUCCESS) {
 				printf("Couldn't set the kernel(11) argument = %d\n", err);
 				exit(1);
 			}
-		// OpenCL execution code replaces this call to render()
+			// OpenCL execution code replaces this call to render()
 			err = clEnqueueNDRangeKernel(queue, kernel, 2, workOffset, workSize, NULL, 0, NULL, NULL);
 			if (err != CL_SUCCESS) {
-				printf("Couldn't enqueue the kernel execution (%d) command = %d\n", j, err);
+				printf("Couldn't enqueue the kernel execution (%d) command = %d\n", pos, err);
 				exit(1);
 			}
 
-			//err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * width * height, buffer, 0, NULL, NULL);
+			err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * width * height, buffer, 0, NULL, NULL);
 			//err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * blockSize * blockSize, buffer + ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j), 0, NULL, NULL);
-			err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * blockSize * blockSize, buffer, 0, NULL, NULL);
+			//err = clEnqueueReadBuffer(queue, clBuffer7, CL_TRUE, 0, sizeof(int) * blockSize * blockSize, buffer, 0, NULL, NULL);
 			if (err != CL_SUCCESS) {
-				printf("Couldn't enqueue the read buffer (%d) command = %d\n", j, err);
+				printf("Couldn't enqueue the read buffer (%d) command = %d\n", pos, err);
 				exit(1);
 			}
 
 			//for (int k = position; k < position + blockSize; k++) {
-			for (int k = 0; k < width * height; k++) { //not efficient but it works 
+			/*for (int k = 0; k < width * height; k++) { //not efficient but it works 
 
 				if (buffer[k] != 0) {
 					combBuffer[k] = buffer[k];
 				}
-			}
-
-
+			}*/
 
 			position += blockSize;
+			pos++;
+			//}
+
+
 			//position = ((long long)j * (int)floor((float)height / (float)blockSize) * width) + (width * (int)ceil((float)(height % blockSize) / (float)blockSize) * j);
 
 			//workOffset[0] += blockSize;
 			//workOffset[1] += blockSize;
-		}
-		
-		//combBuffer[0] = (((int)(255) << 16) | ((int)(255) << 8) | (int)(255));
-		
-		printf("\nreached end of opencl\n\n");
-		//samplesRendered = render(&scene, width, height, samples, testMode);								// raytrace scene
+		//}
 
+		//combBuffer[0] = (((int)(255) << 16) | ((int)(255) << 8) | (int)(255));
+
+			printf("\nreached end of opencl\n\n");
+			//samplesRendered = render(&scene, width, height, samples, testMode);								// raytrace scene
+		}
 		timer.end();																					// record end time
 		if (i > 0)
 		{
@@ -660,5 +668,5 @@ int main(int argc, char* argv[])
 	}
 
 	// output BMP file
-	write_bmp(outputFilename, combBuffer, width, height, width);
+	write_bmp(outputFilename, buffer, width, height, width);
 }

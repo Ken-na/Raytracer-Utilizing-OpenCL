@@ -759,7 +759,9 @@ __kernel void func(__global struct Scene* scenein, int width, int height, int aa
 	//unsigned int height = get_global_size(1);
 
 	unsigned int ix = get_global_id(0);
+	//unsigned int ix = get_global_id(0) + ((pos * blockSize) % width);
 	unsigned int iy = get_global_id(1);
+	//unsigned int iy = get_global_id(1) + ((pos * blockSize) % height);
 	//unsigned int iy = get_global_id(1) + pos;
 
 	float PIOVER180 = 0.017453292519943295769236907684886f;
@@ -781,8 +783,8 @@ __kernel void func(__global struct Scene* scenein, int width, int height, int aa
 	//	for (int x = -width / 2; x < width / 2; ++x)
 	//	{
 
-	int ix2 = ix - (width / 2);
-	int iy2 = iy - (height / 2);
+	int ix2 = ix - (width / 2) + ((pos % (width / blockSize)) * blockSize);
+	int iy2 = iy - (height / 2) + ((pos / (height / blockSize)) * blockSize);
 
 	//float xCap = (float)ix2 + (float)blockSize;
 	//float yCap = (float)iy2 + (float)blockSize;
@@ -826,7 +828,10 @@ __kernel void func(__global struct Scene* scenein, int width, int height, int aa
 		//output.y *= 255.0f;
 		//output.z *= 255.0f;
 
-		out[iy * width + ix] = (unsigned char)((min(1.0f - exp(output.z * scene.exposure), 1.0f) * 255.0f)) << 16 | (unsigned char)((min(1.0f - exp(output.y * scene.exposure), 1.0f) * 255.0f)) << 8 | (unsigned char)((min(1.0f - exp(output.x * scene.exposure), 1.0f) * 255.0f));
+		out[((iy2 + (height / 2)) * (width)+(ix2 + (width / 2)))] = (unsigned char)((min(1.0f - exp(output.z * scene.exposure), 1.0f) * 255.0f)) << 16 | (unsigned char)((min(1.0f - exp(output.y * scene.exposure), 1.0f) * 255.0f)) << 8 | (unsigned char)((min(1.0f - exp(output.x * scene.exposure), 1.0f) * 255.0f));
+		//out[iy * width + ix] = (unsigned char)((min(1.0f - exp(output.z * scene.exposure), 1.0f) * 255.0f)) << 16 | (unsigned char)((min(1.0f - exp(output.y * scene.exposure), 1.0f) * 255.0f)) << 8 | (unsigned char)((min(1.0f - exp(output.x * scene.exposure), 1.0f) * 255.0f));
+		
+		
 		//out[iy * width + ix] = (((int)(output.z * scene.exposure) << 16) | ((int)(output.y * scene.exposure) << 8) | (int)(output.x * scene.exposure));
 		//*out++ = (((int)(output.x) << 16) | ((int)(output.y) << 8) | (int)(output.z));
 		//*out++ = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
@@ -849,7 +854,7 @@ __kernel void func(__global struct Scene* scenein, int width, int height, int aa
 
 		//printf("GARN (pos = %d) FROM X = %d / Y = %d\n", pos, ix, iy);
 
-	if (iy == blockSize * pos && ix == blockSize * pos) {
+	if (iy == 255 && ix == 255) {
 
 
 		//printf("output after almost everything (%f, %f, %f)\n", output.x, output.y, output.z);
