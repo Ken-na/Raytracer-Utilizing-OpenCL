@@ -4,11 +4,11 @@ __constant float DEFAULT_REFRACTIVE_INDEX = 1.0f;
 __constant const float MAX_RAY_DISTANCE = FLT_MAX;
 __constant float PIOVER180 = 0.017453292519943295769236907684886f;
 
-#include "Stage5/Classes.cl"
-#include "Stage5/Intersection.cl"
-#include "Stage5/Materials.cl"
-#include "Stage5/Output.cl"
-#include "Stage5/Lighting.cl"
+#include "Stage4/Classes.cl"
+#include "Stage4/Intersection.cl"
+#include "Stage4/Materials.cl"
+#include "Stage4/Output.cl"
+#include "Stage4/Lighting.cl"
 
 Ray calculateReflection(const Ray* viewRay, const Intersection* intersect)
 {
