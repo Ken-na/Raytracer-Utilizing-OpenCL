@@ -190,9 +190,6 @@ void OutputInfo(const Scene* scene)
 	printf("sizeof(Ray):      %zd\n", sizeof(Ray));
 	printf("sizeof(Light):    %zd\n", sizeof(Light));
 	printf("sizeof(Sphere):   %zd\n", sizeof(Sphere));
-		//printf("sizeof(Sphere->pos):   %zd\n", sizeof(Point));
-		//printf("sizeof(Sphere->size):   %zd\n", sizeof(float));
-		//printf("sizeof(Sphere->material):   %zd\n", sizeof(unsigned int));
 	printf("sizeof(Plane):    %zd\n", sizeof(Plane));
 	printf("sizeof(Cylinder): %zd\n", sizeof(Cylinder));
 	printf("sizeof(Material): %zd\n", sizeof(Material));
@@ -352,8 +349,7 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	// display info about the current scene
-	OutputInfo(&scene);
+	
 
 	Timer timer;		// create timer
 
@@ -375,10 +371,6 @@ int main(int argc, char* argv[])
 	cl_mem clBuffer5;
 	cl_mem clBuffer6;
 	cl_mem clBuffer7;
-
-	//unsigned int outBuffer[width * height];
-	//unsigned int outBuffer[4];
-	//unsigned int outBuffer[MAX_WIDTH * MAX_HEIGHT];
 
 	err = clGetPlatformIDs(1, &platform, NULL);
 	if (err != CL_SUCCESS)
@@ -436,7 +428,6 @@ int main(int argc, char* argv[])
 		printf("Couldn't create a bufferIn1 object\n");
 		exit(1);
 	}
-	//may need to be &'d
 	clBuffer2 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Material) * scene.numMaterials, scene.materialContainer, &err);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't create a bufferIn2 object -> %d\n", err);
@@ -447,7 +438,7 @@ int main(int argc, char* argv[])
 		printf("Couldn't create a bufferIn3 object -> %d\n", err);
 		exit(1);
 	}
-
+	
 	if (scene.numSpheres > 0) {
 		clBuffer4 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(Sphere) * scene.numSpheres, scene.sphereContainer, &err);
 		if (err != CL_SUCCESS) {
@@ -469,7 +460,6 @@ int main(int argc, char* argv[])
 	}
 	else {
 		int dummyInt2 = -1;
-		//clBuffer5 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(scene.planeContainer), scene.planeContainer, &err);
 		clBuffer5 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &dummyInt2, &err);
 	}
 
@@ -482,7 +472,6 @@ int main(int argc, char* argv[])
 	}
 	else {
 		int dummyInt3 = -1;
-		//clBuffer6 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(scene.cylinderContainer), scene.cylinderContainer, &err);
 		clBuffer6 = clCreateBuffer(context, CL_MEM_READ_ONLY | CL_MEM_COPY_HOST_PTR, sizeof(int), &dummyInt3, &err);
 	}
 
@@ -492,79 +481,64 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 
-
 	err = clSetKernelArg(kernel, 0, sizeof(cl_mem), &clBuffer1);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't set the kernel(0) argument\n");
 		exit(1);
 	}
 
-	err = clSetKernelArg(kernel, 1, sizeof(int), &width);
-	if (err != CL_SUCCESS) {
-		printf("Couldn't set the kernel(1) argument = %d\n", err);
-		exit(1);
-	}
-	err = clSetKernelArg(kernel, 2, sizeof(int), &height);
-	if (err != CL_SUCCESS) {
-		printf("Couldn't set the kernel(2) argument = %d\n", err);
-		exit(1);
-	}
-	err = clSetKernelArg(kernel, 3, sizeof(int), &samples);
+	err = clSetKernelArg(kernel, 1, sizeof(int), &samples);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't set the kernel(3) argument = %d\n", err);
 		exit(1);
 	}
 	
 	//add additional kernal args. 
-	err = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clBuffer2);
+	err = clSetKernelArg(kernel, 2, sizeof(cl_mem), &clBuffer2);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't set the kernel(4) argument = %d\n", err);
 		exit(1);
 	}
 
-	err = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clBuffer3);
+	err = clSetKernelArg(kernel, 3, sizeof(cl_mem), &clBuffer3);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't set the kernel(5) argument = %d\n", err);
 		exit(1);
 	}
 
-	err = clSetKernelArg(kernel, 6, sizeof(cl_mem), &clBuffer4);
+	err = clSetKernelArg(kernel, 4, sizeof(cl_mem), &clBuffer4);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't set the kernel(6) argument = %d\n", err);
 		exit(1);
 	}
 
-	err = clSetKernelArg(kernel, 7, sizeof(cl_mem), &clBuffer5);
+	err = clSetKernelArg(kernel, 5, sizeof(cl_mem), &clBuffer5);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't set the kernel(7) argument = %d\n", err);
 		exit(1);
 	}
 
-	err = clSetKernelArg(kernel, 8, sizeof(cl_mem), &clBuffer6);
+	err = clSetKernelArg(kernel, 6, sizeof(cl_mem), &clBuffer6);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't set the kernel(8) argument = %d\n", err);
 		exit(1);
 	}
 
-	err = clSetKernelArg(kernel, 9, sizeof(cl_mem), &clBuffer7);
+	err = clSetKernelArg(kernel, 7, sizeof(cl_mem), &clBuffer7);
 	if (err != CL_SUCCESS) {
 		printf("Couldn't set the kernel(9) argument\n");
 		exit(1);
 	}
 	
+	// display info about the current scene
+	//OutputInfo(&scene);
 
-	
-
-
-	// first time and total time taken to render all runs (used to calculate average)
 	int firstTime = 0;
 	int totalTime = 0;
-	int samplesRendered = 0;
 	for (int i = 0; i < times; i++)
 	{
 		if (i > 0) timer.start();
 
-		// OpenCL execution code replaces this call to render()
 		err = clEnqueueNDRangeKernel(queue, kernel, 2, workOffset, workSize, NULL, 0, NULL, NULL);
 		if (err != CL_SUCCESS) {
 			printf("Couldn't enqueue the kernel execution command = %d\n", err);
@@ -576,8 +550,6 @@ int main(int argc, char* argv[])
 			printf("Couldn't enqueue the read buffer command = %d\n", err);
 			exit(1);
 		}
-		//printf("\nreached end of opencl\n\n");
-		//samplesRendered = render(&scene, width, height, samples, testMode);								// raytrace scene
 
 		timer.end();																					// record end time
 		if (i > 0)

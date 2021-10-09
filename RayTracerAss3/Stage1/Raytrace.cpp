@@ -349,9 +349,6 @@ int main(int argc, char* argv[])
 		return -1;
 	}
 
-	// display info about the current scene
-	OutputInfo(&scene);
-
 	Timer timer;		// create timer
 
 	// OpenCL setup code goes here
@@ -533,6 +530,9 @@ int main(int argc, char* argv[])
 		printf("Couldn't set the kernel(9) argument\n");
 		exit(1);
 	}
+
+	// display info about the current scene
+	OutputInfo(&scene);
 
 	// first time and total time taken to render all runs (used to calculate average)
 	int firstTime = 0;

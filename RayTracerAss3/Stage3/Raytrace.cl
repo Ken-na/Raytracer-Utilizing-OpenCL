@@ -5,19 +5,17 @@ __constant const float MAX_RAY_DISTANCE = FLT_MAX;
 
 enum PrimitiveType { NONE, SPHERE, PLANE, CYLINDER };
 
-
 float3 normalise(float3 x)
 {
 	return x * rsqrt(dot(x, x));
 }
-//colour has been changed to int3 (NOW THEY"RE FLOAT3)
-//point and vector are float3.
 
 typedef struct Ray
 {
 	float3 start;
 	float3 dir;
 } Ray;
+
 // material
 typedef struct Material
 {
@@ -38,14 +36,12 @@ typedef struct Material
 	float density;				// density of material (affects amount of defraction)
 } Material;
 
-
 // light object
 typedef struct Light
 {
 	float3 pos;					// location
 	float3 intensity;			// brightness and colour
 } Light;
-
 
 // sphere object
 typedef struct Sphere
@@ -125,16 +121,13 @@ void OutputInfo(const Scene* scene)
 	__global Light* lights = scene->lightContainer;
 	__global Material* materials = scene->materialContainer;
 
-	printf("\n---- GEEPEEYOU --------\n");
+	printf("\n---- GPU --------\n");
 	printf("sizeof(Point):    %d\n", sizeof(float3));
 	printf("sizeof(Vector):   %d\n", sizeof(float3));
 	printf("sizeof(Colour):   %d\n", sizeof(float3));
 	printf("sizeof(Ray):      %d\n", sizeof(Ray));
 	printf("sizeof(Light):    %d\n", sizeof(Light));
 	printf("sizeof(Sphere):   %d\n", sizeof(Sphere));
-		//printf("sizeof(Sphere->pos):   %d\n", sizeof(float3));
-		//printf("sizeof(Sphere->size):   %d\n", sizeof(float));
-		//printf("sizeof(Sphere->material):   %d\n", sizeof(unsigned int));
 	printf("sizeof(Plane):    %d\n", sizeof(Plane));
 	printf("sizeof(Cylinder): %d\n", sizeof(Cylinder));
 	printf("sizeof(Material): %d\n", sizeof(Material));
@@ -230,13 +223,6 @@ void OutputInfo(const Scene* scene)
 
 }
 
-/*	Material* materialContainer;
-	Light* lightContainer;
-	Sphere* sphereContainer;
-	Plane* planeContainer;
-	Cylinder* cylinderContainer;*/
-	// updates intersection structure if collision occurs
-
 bool isCylinderIntersected(__global Cylinder* cy, const Ray* r, float* t, float3* normal)
 {
 	// vector between start and end of the cylinder (cylinder axis, i.e. ca)
@@ -307,6 +293,7 @@ bool isCylinderIntersected(__global Cylinder* cy, const Ray* r, float* t, float3
 
 	return false;
 }
+
 bool isPlaneIntersected(__global const Plane* p, const Ray* r, float* t)
 {
 	// angle between ray and surface normal
@@ -334,10 +321,8 @@ bool isSphereIntersected(__global Sphere* s, const Ray* r, float* t)
 	float EPSILON = 0.01f;
 	// Intersection of a ray and a sphere, check the articles for the rationale
 	float3 dist = s->pos - r->start;
-	//float B = r->dir * dist;
 	float B = dot(r->dir, dist);
 	float D = B * B - dot(dist, dist) + s->size * s->size;
-	//float D = B * B - dist * dist + s->size * s->size;
 
 	// if D < 0, no intersection, so don't try and calculate the point of intersection
 	if (D < 0.0f) return false;
@@ -417,25 +402,7 @@ float3 applyDiffuse(const Ray* lightRay, __global const Light* currentLight, con
 {
 	float3 output = intersect->material->diffuse;
 
-	/*switch (intersect->material->type)
-	{
-	case GOURAUD:
-		output = intersect->material->diffuse;
-		break;
-	case CHECKERBOARD:
-		output = applyCheckerboard(intersect);
-		break;
-	case CIRCLES:
-		output = applyCircles(intersect);
-		break;
-	case WOOD:
-		output = applyWood(intersect);
-		break;
-	}*/
-
 	float lambert = dot(lightRay->dir, intersect->normal);
-
-	//printf("currlight intensity: %f, %f, %f\n", lambert * currentLight->intensity.x * output, lambert * currentLight->intensity.y * output, lambert * currentLight->intensity.z * output);
 
 	return lambert * currentLight->intensity * output;
 }
@@ -478,7 +445,6 @@ float3 applyLighting(const Scene* scene, const Ray* viewRay, const Intersection*
 
 		// distance to light from intersection point (and it's inverse)
 		float lightDist = sqrt(dot(lightRay.dir, lightRay.dir));
-		//float lightDist = sqrt(lightRay.dir.dot());
 		float invLightDist = 1.0f / lightDist;
 
 		// light ray projection
@@ -487,52 +453,12 @@ float3 applyLighting(const Scene* scene, const Ray* viewRay, const Intersection*
 		// normalise the light direction
 		lightRay.dir = lightRay.dir * invLightDist;
 
-
 		// add diffuse lighting from colour / texture
 		output += applyDiffuse(&lightRay, currentLight, intersect);
 
 		// add specular lighting
-		//float3 preoutput = output;
-		//printf("\n\nOutput Pre Spec: %f, %f, %f\n", output.x, output.y, output.z);
-		//printf("Specular: %f, %f, %f\n", applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).x, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).y, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).z);
-		//printf("Specular: %f, %f, %f\n", applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).x, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).y, applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect).z);
 		output += applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect);
-		
-		/*if (preoutput.x != output.x || preoutput.y != output.y || preoutput.z != output.z) {
-			printf("\n\nOutput Pre Spec: %f, %f, %f\nOutput Post Spec: %f, %f, %f\n", preoutput.x, preoutput.y, preoutput.z, output.x, output.y, output.z);
-
-		}*/
-		
-		//printf("Output Post Spec: %f, %f, %f\n", output.x, output.y, output.z);
-
-
-		/*
-		//diffuse
-		output = intersect->material->diffuse;
-		float lambert = dot(lightRay.dir, intersect->normal);
-		output += lambert * dot(currentLight->intensity, intersect->material->diffuse);
-
-		//specular
-		float3 blinnDir = lightRay.dir - viewRay->dir;
-		float blinn = rsqrt(dot(blinnDir, blinnDir)) * max(lightProjection - intersect->viewProjection, 0.0f);
-		blinn = pow(blinn, intersect->material->power);
-
-		output += blinn * intersect->material->specular * currentLight->intensity;*/
-
-		//output += applyDiffuse(&lightRay, currentLight, intersect);
-		// only apply lighting from this light if not in shadow of some other object
-		/*if (!isInShadow(scene, &lightRay, lightDist))
-		{
-			// add diffuse lighting from colour / texture
-			output += applyDiffuse(&lightRay, currentLight, intersect);
-
-			// add specular lighting
-			output += applySpecular(&lightRay, currentLight, lightProjection, viewRay, intersect);
-		}*/
-
-		//printf("%f\n", currentLight.intensity);
 	}
-
 
 	return output;
 }
@@ -558,7 +484,6 @@ void calculateIntersectionResponse(const Scene* scene, const Ray* viewRay, Inter
 		break;
 	}
 	
-
 	// calculate view projection
 	intersect->viewProjection = dot(viewRay->dir, intersect->normal);
 
@@ -588,72 +513,14 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 
 		calculateIntersectionResponse(scene, &viewRay, &intersect);
 
-
 		if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
-		
-
-		//printf("output trace pre return loop (%f, %f, %f)\n", output.x, output.y, output.z);
-		//output = dot(output, g);
-		
 
 		return output;
-		/*
-		switch (intersect.objectType)
-		{
-		case SPHERE:
-			//output = red;
-			intersect.normal = normalise(intersect.pos - intersect.sphere->pos);
-			intersect.material = &scene->materialContainer[intersect.sphere->materialId];
-			break;
-		case PLANE:
-			//output = green;
-			intersect.normal = intersect.plane->normal;
-			intersect.material = &scene->materialContainer[intersect.plane->materialId];
-			break;
-		case CYLINDER:			
-			//normal already returned from intersection function, so nothing to do here
-			//output = blue;
-			intersect.material = &scene->materialContainer[intersect.cylinder->materialId];
-			break;
-		}*/
-		/*
-		//printf("ge\n");
-		// calculate view projection
-		intersect.viewProjection = dot(viewRay.dir, intersect.normal);
-
-		// detect if we are inside an object (needed for refraction)
-		intersect.insideObject = (dot(intersect.normal, viewRay.dir) > 0.0f);
-
-		// if inside an object, reverse the normal
-		if (intersect.insideObject)
-		{
-			intersect.normal = intersect.normal * -1.0f;
-		}
-
-		if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
-
-		//Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
-
-		//output += coef * scene->materialContainer[scene->skyboxMaterialId].diffuse;
-
-		return output;*/
 	}
-
-	// if the calculation coefficient is non-zero, read from the environment map
-	/*if (coef > 0.0f)
-	{
-		//Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
-
-		//output += coef * currentMaterial.diffuse;
-		output += coef * scene->materialContainer[scene->skyboxMaterialId].diffuse;
-	}*/
 
 	return output;
 }
 
-
-//TODO: add an appropriate set of parameters to transfer the data
-	//MAY BE ABLE TO REMOVE WWIDTH AND HHEIGHT (we have get_global_size fo dat)
 __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int aaLevel,
 	__global Material* materialContainerIn,
 	__global Light* lightContainerIn,
@@ -680,28 +547,14 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 
 	float PIOVER180 = 0.017453292519943295769236907684886f;
 	
-	//out[iy * width + ix] = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
-
 	// angle between each successive ray cast (per pixel, anti-aliasing uses a fraction of this)
 	const float dirStepSize = 1.0f / (0.5f * width / tan(PIOVER180 * 0.5f * scene.cameraFieldOfView));
-
-	// pointer to output buffer
-	//unsigned int* out = buffer;
 
 	// count of samples rendered
 	unsigned int samplesRendered = 0;
 
-	// loop through all the pixels
-	//for (int y = -height / 2; y < height / 2; ++y)
-	//{
-	//	for (int x = -width / 2; x < width / 2; ++x)
-	//	{
-
 	int ix2 = ix - (width / 2);
 	int iy2 = iy - (height / 2);
-
-	//int ix2 = (-width / 2) + ix;
-	//int iy2 = (-height / 2) + ix;
 
 	float3 output = { 0.0f, 0.0f, 0.0f };
 
@@ -733,47 +586,9 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 			}
 		}
 
-		//output.x *= 255.0f;
-		//output.y *= 255.0f;
-		//output.z *= 255.0f;
-
 		out[iy * width + ix] = (unsigned char)((min(1.0f - exp(output.z * scene.exposure), 1.0f) * 255.0f)) << 16 | (unsigned char)((min(1.0f - exp(output.y * scene.exposure), 1.0f) * 255.0f)) << 8 | (unsigned char)((min(1.0f - exp(output.x * scene.exposure), 1.0f) * 255.0f));
-		//out[iy * width + ix] = (((int)(output.z * scene.exposure) << 16) | ((int)(output.y * scene.exposure) << 8) | (int)(output.x * scene.exposure));
-		//*out++ = (((int)(output.x) << 16) | ((int)(output.y) << 8) | (int)(output.z));
-		//*out++ = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
-		//if (!testMode)
-		//{
-			// store saturated final colour value in image buffer
-			//*out++ = (((output.x) << 16) | ((output.y) << 8) | (output.z % 256));
-			//*out++ = output.convertToPixel(scene->exposure);
-		//}
-		//else
-		//{
-		//	// store colour (calculated from x,y coordinates) in image buffer 
-		//	//*out++ = Colour((x + width / 2) % 256 / 255.0f, 0, (y + height / 2) % 256 / 255.0f).convertToPixel();
-		//	//*out++ = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
-		//}
-		//}
-	//}
-
-	//return samplesRendered;
-
+	/*
 	if (iy == 0 && ix == 0) {
-
-
-		printf("output after almost everything (%f, %f, %f)\n", output.x, output.y, output.z);
-		//output.x = output.x * 255;
-		//output.y = output.y * 255;
-		//output.z = output.z * 255;
-		//printf("output after everything (%f, %f, %f)\n", output.x, output.y, output.z);
-		printf("Exposure: %f\n", scene.exposure);
-
-
 		OutputInfo(&scene);
-
-		printf("\nSAMPLES: %d\n", aaLevel);
-
-	}
-
-
+	}*/
 }

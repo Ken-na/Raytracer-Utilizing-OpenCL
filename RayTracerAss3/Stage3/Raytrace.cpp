@@ -24,7 +24,6 @@ Ray calculateReflection(const Ray* viewRay, const Intersection* intersect)
 	return newRay;
 }
 
-
 // refract the ray through an object
 Ray calculateRefraction(const Ray* viewRay, const Intersection* intersect, float* currentRefractiveIndex)
 {
@@ -190,9 +189,6 @@ void OutputInfo(const Scene* scene)
 	printf("sizeof(Ray):      %zd\n", sizeof(Ray));
 	printf("sizeof(Light):    %zd\n", sizeof(Light));
 	printf("sizeof(Sphere):   %zd\n", sizeof(Sphere));
-		//printf("sizeof(Sphere->pos):   %zd\n", sizeof(Point));
-		//printf("sizeof(Sphere->size):   %zd\n", sizeof(float));
-		//printf("sizeof(Sphere->material):   %zd\n", sizeof(unsigned int));
 	printf("sizeof(Plane):    %zd\n", sizeof(Plane));
 	printf("sizeof(Cylinder): %zd\n", sizeof(Cylinder));
 	printf("sizeof(Material): %zd\n", sizeof(Material));
@@ -351,9 +347,6 @@ int main(int argc, char* argv[])
 		fprintf(stderr, "Failure when reading the Scene file.\n");
 		return -1;
 	}
-
-	// display info about the current scene
-	OutputInfo(&scene);
 
 	Timer timer;		// create timer
 
@@ -552,9 +545,8 @@ int main(int argc, char* argv[])
 		exit(1);
 	}
 	
-
-	
-
+	// display info about the current scene
+	//OutputInfo(&scene);
 
 	// first time and total time taken to render all runs (used to calculate average)
 	int firstTime = 0;

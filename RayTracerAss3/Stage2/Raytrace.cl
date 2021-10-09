@@ -1,13 +1,13 @@
-﻿
+﻿//All instances of "color" or "point" have been replaced with float3. 
 
-//colour has been changed to int3 (NOW THEY"RE FLOAT3)
-//point and vector are float3.
+__constant float PIOVER180 = 0.017453292519943295769236907684886f;
 
 typedef struct Ray
 {
 	float3 start;
 	float3 dir;
 } Ray;
+
 // material
 typedef struct Material
 {
@@ -28,14 +28,12 @@ typedef struct Material
 	float density;				// density of material (affects amount of defraction)
 } Material;
 
-
 // light object
 typedef struct Light
 {
 	float3 pos;					// location
 	float3 intensity;			// brightness and colour
 } Light;
-
 
 // sphere object
 typedef struct Sphere
@@ -66,9 +64,7 @@ typedef struct Scene
 	float3 cameraPosition;					// camera location
 	float cameraRotation;					// direction camera points
 	float cameraFieldOfView;				// field of view for the camera
-
 	float exposure;							// image exposure
-
 	unsigned int skyboxMaterialId;
 
 	// scene object counts
@@ -95,16 +91,13 @@ void OutputInfo(const Scene* scene)
 	__global Light* lights = scene->lightContainer;
 	__global Material* materials = scene->materialContainer;
 
-	printf("\n---- GEEPEEYOU --------\n");
+	printf("\n---- GPU --------\n");
 	printf("sizeof(Point):    %d\n", sizeof(float3));
 	printf("sizeof(Vector):   %d\n", sizeof(float3));
 	printf("sizeof(Colour):   %d\n", sizeof(float3));
 	printf("sizeof(Ray):      %d\n", sizeof(Ray));
 	printf("sizeof(Light):    %d\n", sizeof(Light));
 	printf("sizeof(Sphere):   %d\n", sizeof(Sphere));
-		//printf("sizeof(Sphere->pos):   %d\n", sizeof(float3));
-		//printf("sizeof(Sphere->size):   %d\n", sizeof(float));
-		//printf("sizeof(Sphere->material):   %d\n", sizeof(unsigned int));
 	printf("sizeof(Plane):    %d\n", sizeof(Plane));
 	printf("sizeof(Cylinder): %d\n", sizeof(Cylinder));
 	printf("sizeof(Material): %d\n", sizeof(Material));
@@ -295,16 +288,13 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 
 	float3 black = { 0.0f, 0.0f, 0.0f }; 								// colour value to be output
 	float3 white = { 255.0f, 255.0f, 255.0f }; 								// colour value to be output
-	//float currentRefractiveIndex = DEFAULT_REFRACTIVE_INDEX;		// current refractive index
 	float coef = 1.0f;												// amount of ray left to transmit
-	//Intersection intersect;											// properties of current intersection
 
 																	// loop until reached maximum ray cast limit (unless loop is broken out of)
 	for (int level = 0; level < maxRayCast; ++level)
 	{
 		// check for intersections between the view ray and any of the objects in the scene
 		// exit the loop if no intersection found
-		//if (!objectIntersection(scene, &viewRay, &intersect)) break;
 
 		float t = FLT_MAX;
 
@@ -312,60 +302,22 @@ float3 traceRay(const Scene* scene, Ray viewRay)
 		{
 			if (isSphereIntersected(&scene->sphereContainer[i], &viewRay, &t))
 			{
-				//intersect->objectType = Intersection::PrimitiveType::SPHERE;
-				//intersect->sphere = &scene->sphereContainer[i];
 				return white;
 			}
 		}
-
-		// calculate response to collision: ie. get normal at point of collision and material of object
-		//calculateIntersectionResponse(scene, &viewRay, &intersect);
-
-		// apply the diffuse and specular lighting 
-//if (!intersect.insideObject) output += coef * applyLighting(scene, &viewRay, &intersect);
-
-		// if object has reflection or refraction component, adjust the view ray and coefficent of calculation and continue looping
-		//if (intersect.material->reflection)
-		//{
-		//	viewRay = calculateReflection(&viewRay, &intersect);
-		//	coef *= intersect.material->reflection;
-		//}
-		//else if (intersect.material->refraction)
-		//{
-		//	viewRay = calculateRefraction(&viewRay, &intersect, &currentRefractiveIndex);
-		//	coef *= intersect.material->refraction;
-		//}
-		//else
-		//{
-			// if no reflection or refraction, then finish looping (cast no more rays)
+		
 		return black;
-		//}
 	}
-
-	// if the calculation coefficient is non-zero, read from the environment map
-	/*if (coef > 0.0f)
-	{
-		Material& currentMaterial = scene->materialContainer[scene->skyboxMaterialId];
-
-		output += coef * currentMaterial.diffuse;
-	}*/
 
 	return black;
 }
-
-/*float dot(float3 x){
-{
-	return x.x * x.x + x.y * x.y + x.z * x.z;
-}*/
 
 float3 normalise(float3 x)
 {
 	return x * rsqrt(dot(x, x));
 }
 
-//TODO: add an appropriate set of parameters to transfer the data
-	//MAY BE ABLE TO REMOVE WWIDTH AND HHEIGHT (we have get_global_size fo dat)
-__kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int aaLevel,
+__kernel void func(__global struct Scene* scenein, int aaLevel,
 	__global Material* materialContainerIn,
 	__global Light* lightContainerIn,
 	__global Sphere* sphereContainerIn,
@@ -374,44 +326,23 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 	__global int* out) {
 
 	Scene scene = *scenein;
-
 	scene.materialContainer = materialContainerIn;
 	scene.lightContainer = lightContainerIn;
 	scene.sphereContainer = sphereContainerIn;
 	scene.planeContainer = planeContainerIn;
 	scene.cylinderContainer = cylinderContainerIn;
 
-
 	unsigned int width = get_global_size(0);
 	unsigned int height = get_global_size(1);
 
 	unsigned int ix = get_global_id(0);
 	unsigned int iy = get_global_id(1);
-
-	float PIOVER180 = 0.017453292519943295769236907684886f;
 	
-	//out[iy * width + ix] = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
-
 	// angle between each successive ray cast (per pixel, anti-aliasing uses a fraction of this)
 	const float dirStepSize = 1.0f / (0.5f * width / tan(PIOVER180 * 0.5f * scene.cameraFieldOfView));
 
-	// pointer to output buffer
-	//unsigned int* out = buffer;
-
-	// count of samples rendered
-	unsigned int samplesRendered = 0;
-
-	// loop through all the pixels
-	//for (int y = -height / 2; y < height / 2; ++y)
-	//{
-	//	for (int x = -width / 2; x < width / 2; ++x)
-	//	{
-
 	int ix2 = ix - (width / 2);
 	int iy2 = iy - (height / 2);
-
-	//int ix2 = (-width / 2) + ix;
-	//int iy2 = (-height / 2) + ix;
 
 	float3 output = { 0.0f, 0.0f, 0.0f };
 
@@ -437,38 +368,14 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 
 				// follow ray and add proportional of the result to the final pixel colour
 				output += sampleRatio * traceRay(&scene, viewRay);
-
-				// count this sample
-				samplesRendered++;
 			}
 		}
 
 		out[iy * width + ix] = (((int)(output.x) << 16) | ((int)(output.y) << 8) | (int)(output.z));
-		//*out++ = (((int)(output.x) << 16) | ((int)(output.y) << 8) | (int)(output.z));
-		//*out++ = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
-		//if (!testMode)
-		//{
-			// store saturated final colour value in image buffer
-			//*out++ = (((output.x) << 16) | ((output.y) << 8) | (output.z % 256));
-			//*out++ = output.convertToPixel(scene->exposure);
-		//}
-		//else
-		//{
-		//	// store colour (calculated from x,y coordinates) in image buffer 
-		//	//*out++ = Colour((x + width / 2) % 256 / 255.0f, 0, (y + height / 2) % 256 / 255.0f).convertToPixel();
-		//	//*out++ = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
-		//}
-		//}
+
+	//if (iy == 0 && ix == 0) {
+	//	OutputInfo(&scene);
 	//}
-
-	//return samplesRendered;
-
-	if (iy == 0 && ix == 0) {
-		//OutputInfo(&scene);
-
-		printf("stanky leg\n");
-
-	}
 
 
 }
