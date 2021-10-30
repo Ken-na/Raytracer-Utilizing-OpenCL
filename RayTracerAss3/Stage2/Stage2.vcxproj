@@ -36,6 +36,9 @@
     <ClCompile Include="Texturing.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Classes.cl" />
+    <None Include="Intersection.cl" />
+    <None Include="Output.cl" />
     <None Include="Raytrace.cl" />
   </ItemGroup>
   <PropertyGroup Label="Globals">

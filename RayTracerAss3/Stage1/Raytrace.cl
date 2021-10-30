@@ -1,4 +1,6 @@
-﻿inline unsigned int iterations2colour(unsigned int iter, unsigned int max_iter, unsigned int flags)
+﻿//All instances of "color" or "point" have been replaced with float3. 
+
+inline unsigned int iterations2colour(unsigned int iter, unsigned int max_iter, unsigned int flags)
 {
 	// bound iterations to number of available colours
 	iter = (iter * 256 / max_iter) & (256 - 1);
@@ -7,14 +9,12 @@
 	return (((flags & 4) << 14) | ((flags & 2) << 7) | (flags & 1)) * iter;
 }
 
-//colour has been changed to int3 (NOW THEY"RE FLOAT3)
-//point and vector are float3.
-
 typedef struct Ray
 {
 	float3 start;
 	float3 dir;
 } Ray;
+
 // material
 typedef struct Material
 {
@@ -102,16 +102,13 @@ void OutputInfo(const Scene* scene)
 	__global Light* lights = scene->lightContainer;
 	__global Material* materials = scene->materialContainer;
 
-	printf("\n---- GEEPEEYOU --------\n");
+	printf("\n---- GPU --------\n");
 	printf("sizeof(Point):    %d\n", sizeof(float3));
 	printf("sizeof(Vector):   %d\n", sizeof(float3));
 	printf("sizeof(Colour):   %d\n", sizeof(float3));
 	printf("sizeof(Ray):      %d\n", sizeof(Ray));
 	printf("sizeof(Light):    %d\n", sizeof(Light));
 	printf("sizeof(Sphere):   %d\n", sizeof(Sphere));
-		//printf("sizeof(Sphere->pos):   %d\n", sizeof(float3));
-		//printf("sizeof(Sphere->size):   %d\n", sizeof(float));
-		//printf("sizeof(Sphere->material):   %d\n", sizeof(unsigned int));
 	printf("sizeof(Plane):    %d\n", sizeof(Plane));
 	printf("sizeof(Cylinder): %d\n", sizeof(Cylinder));
 	printf("sizeof(Material): %d\n", sizeof(Material));
@@ -206,15 +203,7 @@ void OutputInfo(const Scene* scene)
 	}
 }
 
-/*	Material* materialContainer;
-	Light* lightContainer;
-	Sphere* sphereContainer;
-	Plane* planeContainer;
-	Cylinder* cylinderContainer;*/
-
-//TODO: add an appropriate set of parameters to transfer the data
-	//MAY BE ABLE TO REMOVE WWIDTH AND HHEIGHT (we have get_global_size fo dat)
-__kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int aaLevel,
+__kernel void func(__global struct Scene* scenein, int aaLevel,
 	__global Material* materialContainerIn,
 	__global Light* lightContainerIn,
 	__global Sphere* sphereContainerIn,
@@ -223,13 +212,11 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 	__global int* out) {
 
 	Scene scene = *scenein;
-
 	scene.materialContainer = materialContainerIn;
 	scene.lightContainer = lightContainerIn;
 	scene.sphereContainer = sphereContainerIn;
 	scene.planeContainer = planeContainerIn;
 	scene.cylinderContainer = cylinderContainerIn;
-
 
 	unsigned int width = get_global_size(0);
 	unsigned int height = get_global_size(1);
@@ -237,39 +224,9 @@ __kernel void func(__global struct Scene* scenein, int wwidth, int hheight, int 
 	unsigned int ix = get_global_id(0);
 	unsigned int iy = get_global_id(1);
 
-	//printf("%d / %d\n", iy, ix);
-
-	//out[iy * width + ix] = ((ix % 256) | (0) | (iy % 256)) * 2;\
-
-	//float3 rgb = { 255, 0, 0 };
-	//out[iy * width + ix] = &rgb;
-	
 	out[iy * width + ix] = (((ix % 256) << 16) | ((0) << 8) | (iy % 256));
-
-	//00 00 00 00
-	//out[iy * width + ix] = (((flags & 4) << 14) | ((flags & 2) << 7) | (flags & 1));
-	/*out[iy * width + ix] =
-		((unsigned char) (255 * (min(1.0f - exp((ix % 256) * scene.exposure), 1.0f))) << 16) +
-		((unsigned char) (255 * (min(1.0f - exp(0 * scene.exposure), 1.0f))) << 8) +
-		((unsigned char) (255 * (min(1.0f - exp((iy % 256) * scene.exposure), 1.0f))) << 0);*/
-	
-		//((unsigned char) (255 * (std::min(1.0f - expf(255 * scene.exposure), 1.0f))) << 16) +
-		//((unsigned char) (255 * (std::min(1.0f - expf(0 * scene.exposure), 1.0f))) << 8) +
-		//((unsigned char) (255 * (std::min(1.0f - expf(255 * scene.exposure), 1.0f))) << 0);
-	//out[iy * width + ix] = ((ix % 256) | (0) | (iy % 256)) * 2;
-	//out[iy * width + ix] = (255) | (0) | (0) * 10;
-	//out[iy * width + ix] = iterations2colour(100 / (21414 * 2112312), 1, 7);
-	//RGB(xCoordinate % 256, 0, yCoordinate % 256)
-
-
-	//printf("hello world\n");
-	//printf("width: %d, height: %d\n", width, height);
-	//printf("cameraFieldOfView: %d\n", scene.cameraFieldOfView);
 
 	if (iy == 0 && ix == 0) {
 		OutputInfo(&scene);
-
 	}
-
-
 }
